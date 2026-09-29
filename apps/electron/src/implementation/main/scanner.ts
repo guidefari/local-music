@@ -5,7 +5,7 @@ import { extname, join, parse } from 'node:path'
 import { Effect, Result, Schema, Stream } from 'effect'
 import { parseFile, selectCover } from 'music-metadata'
 
-import type { ScanResult, Track } from '../shared/library-contract'
+import type { ScanResult, Track } from '../../contracts/library'
 
 const audioExtensions = new Set(['.mp3', '.m4a', '.flac', '.wav', '.aiff', '.aif', '.ogg', '.opus'])
 

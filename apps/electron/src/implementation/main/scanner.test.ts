@@ -6,7 +6,7 @@ import { afterEach, test } from 'node:test'
 
 import { Effect, Result, Schema, Stream } from 'effect'
 
-import { ScanResult } from '../shared/library-contract'
+import { ScanResult } from '../../contracts/library'
 import { scanFolder, scanFolderStream } from './scanner'
 
 const folders: string[] = []

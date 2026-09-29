@@ -1,6 +1,6 @@
 import { Show } from 'solid-js'
 
-import type { ScanResult } from '../../shared/library-contract'
+import type { ScanResult } from '../../../contracts/library'
 
 export function Cover(props: {
   id: string | null

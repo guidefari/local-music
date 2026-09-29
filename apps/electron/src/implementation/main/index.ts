@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { Effect } from 'effect'
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 
-import type { ScanReply } from '../shared/library-contract'
+import type { ScanReply } from '../../contracts/library'
 import { scanFolder } from './scanner'
 
 function createWindow() {

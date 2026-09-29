@@ -1,6 +1,6 @@
 import { For, createMemo } from 'solid-js'
 
-import type { ScanResult } from '../../shared/library-contract'
+import type { ScanResult } from '../../../contracts/library'
 import { Cover } from './cover'
 
 export function Albums(props: { data: ScanResult }) {
