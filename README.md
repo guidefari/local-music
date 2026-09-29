@@ -20,6 +20,6 @@ This is the first slice of [the wayfinder journey](wayfinder/tickets/01-first-jo
 
 ## Electron app
 
-Install the JavaScript workspace with `bun install`, then run `bun run dev:electron`. This builds the shared Rust scanner and starts Electron. The Electron app uses Effect `4.0.0-rc.118` to run and validate scans, React for the renderer, and a development-only FPS meter. No Vite or CSS framework is needed.
+Install the JavaScript workspace with `bun install`, then run `bun run dev:electron`. This builds the shared Rust scanner and starts Electron. The Electron app uses Effect `4.0.0-rc.118` to run and validate scans, Solid for the renderer, and a development-only FPS meter. Bun builds the main and preload processes; Vite with the Solid plugin builds the renderer. Drizzle is installed for the upcoming persistent library, but no database or schema exists yet.
 
 Both apps use the same read-only scanner for metadata and embedded album art. Electron invokes the scanner as a local process; it does not expose Node.js to the renderer. The Electron app is currently a development app, not a packaged distribution. Run `cargo test`, `bun run check:electron`, and `bun run test:electron` to verify both sides.

@@ -68,4 +68,4 @@ input::placeholder { color: var(--muted-foreground); }
 .track-copy { flex: 1; gap: 5px; }
 .track-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .empty-list { padding: 28px; color: var(--muted-foreground); }
-.fps-meter { position: fixed; bottom: 12px; right: 12px; width: 96px; opacity: .75; pointer-events: none; }
+.fps-meter { position: fixed; bottom: 12px; right: 12px; min-width: 72px; padding: 5px 8px; border-radius: 5px; color: var(--foreground); background: var(--muted); font: 11px Menlo, monospace; text-align: center; opacity: .85; pointer-events: none; }

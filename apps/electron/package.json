@@ -4,22 +4,22 @@
   "version": "0.1.0",
   "main": "dist/main.js",
   "scripts": {
-    "build": "bun build src/main.ts src/preload.ts --target=node --format=cjs --external electron --outdir dist && bun build src/renderer.tsx --target=browser --outdir dist && cp src/index.html dist/index.html && cp src/styles.css dist/styles.css && cp ../../apps/rust/assets/app-icon.svg dist/app-icon.svg",
+    "build": "bun build src/main.ts src/preload.ts --target=node --format=cjs --external electron --outdir dist && vite build && cp ../../apps/rust/assets/app-icon.svg dist/app-icon.svg",
     "dev": "bun run build && electron .",
     "check": "tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.3",
     "effect": "4.0.0-rc.118",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "solid-js": "^1.9.15"
   },
   "devDependencies": {
-    "@overengineering/fps-meter": "0.2.4",
     "@types/node": "^24",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
     "electron": "44.4.5",
-    "typescript": "^6"
+    "typescript": "^6",
+    "vite": "^8.3.1",
+    "vite-plugin-solid": "^2.11.14"
   }
 }
