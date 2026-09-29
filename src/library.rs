@@ -82,7 +82,10 @@ pub fn scan_folder(folder: &Path) -> ScanResult {
                         .map(|album| album.into_owned())
                         .unwrap_or_else(|| "Unknown album".to_owned()),
                     duration_seconds: file.properties().duration().as_secs(),
-                    cover: tag.and_then(|tag| cover_image(tag, &mut covers)),
+                    cover: file
+                        .tags()
+                        .iter()
+                        .find_map(|tag| cover_image(tag, &mut covers)),
                 });
             }
             Err(_) => skipped += 1,

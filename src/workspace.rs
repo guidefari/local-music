@@ -6,11 +6,13 @@ use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
     scroll::ScrollableElement,
 };
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use crate::{
     appearance,
     library::{ScanResult, Track, scan_folder},
+    library_view,
 };
 
 pub struct Workspace {
@@ -86,59 +88,6 @@ impl Render for Workspace {
             .filter(|track| track.matches(&self.query))
             .collect();
         let count = filtered.len();
-        let rows = filtered
-            .into_iter()
-            .take(500)
-            .enumerate()
-            .map(|(index, track)| {
-                div()
-                    .flex()
-                    .items_center()
-                    .gap_4()
-                    .border_b_1()
-                    .border_color(cx.theme().border)
-                    .px_4()
-                    .py_3()
-                    .bg(cx.theme().group_box)
-                    .child(
-                        div()
-                            .w_8()
-                            .font_family("Menlo")
-                            .text_sm()
-                            .text_color(cx.theme().muted_foreground)
-                            .child(format!("{:02}", index + 1)),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .flex_1()
-                            .gap_1()
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .child(track.title.clone()),
-                            )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(cx.theme().muted_foreground)
-                                    .child(format!("{} · {}", track.artist, track.album)),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .font_family("Menlo")
-                            .text_sm()
-                            .text_color(cx.theme().muted_foreground)
-                            .child(format!(
-                                "{}:{:02}",
-                                track.duration_seconds / 60,
-                                track.duration_seconds % 60
-                            )),
-                    )
-            });
-
         div()
             .flex()
             .flex_col()
@@ -227,15 +176,28 @@ impl Render for Workspace {
                                     )),
                             ),
                     )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child(self.status.clone()),
+                    )
                     .child(Input::new(&self.search))
+                    .when(!self.tracks.is_empty(), |view| {
+                        view.child(library_view::albums(&self.tracks, cx))
+                    })
                     .child(
                         div()
                             .flex()
                             .justify_between()
                             .text_sm()
                             .text_color(cx.theme().muted_foreground)
-                            .child(self.status.clone())
-                            .child(format!("{count} matching tracks")),
+                            .child("Tracks")
+                            .child(if count > 500 {
+                                format!("{count} matching · showing first 500")
+                            } else {
+                                format!("{count} matching tracks")
+                            }),
                     )
                     .child(
                         div()
@@ -245,7 +207,7 @@ impl Render for Workspace {
                             .rounded_lg()
                             .border_1()
                             .border_color(cx.theme().border)
-                            .children(rows),
+                            .child(library_view::track_rows(&filtered, cx)),
                     ),
             )
     }
