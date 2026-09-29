@@ -26,3 +26,5 @@ bun run test
 ```
 
 `bun run verify` checks lint, formatting, TypeScript, Effect diagnostics, tests, and the production build. The app is a development build, not a packaged distribution. Playlist editing, playback, and file moves are not implemented.
+
+The [MVP decision map](https://github.com/guidefari/local-music/issues/1) and its tickets live in GitHub Issues.
