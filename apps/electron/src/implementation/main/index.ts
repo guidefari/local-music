@@ -10,6 +10,7 @@ import { openLibraryDatabase } from '@/implementation/main/db/open'
 import { libraryStoreLayer } from '@/implementation/main/db/store'
 import { libraryLayer } from '@/implementation/main/library'
 import { sourceScannerLayer } from '@/implementation/main/scanner'
+import { stopTelemetry, traceLibraryOperation } from '@/implementation/main/telemetry'
 
 function createWindow() {
   const output = join(app.getAppPath(), 'dist')
@@ -75,7 +76,11 @@ void app.whenReady().then(async () => {
   const rescan = async (sourceId: string): Promise<LibraryReply> => {
     try {
       notifyScan({ sourceId, running: true })
-      const data = await Effect.runPromise(library.rescan(sourceId))
+
+      const data = await traceLibraryOperation('library.rescan', () =>
+        Effect.runPromise(library.rescan(sourceId)),
+      )
+
       notifyLibrary(data)
 
       return { ok: true, data }
@@ -94,7 +99,9 @@ void app.whenReady().then(async () => {
 
   ipcMain.handle('library:load', async (): Promise<LibraryReply> => {
     try {
-      const data = await Effect.runPromise(library.load())
+      const data = await traceLibraryOperation('library.load', () =>
+        Effect.runPromise(library.load()),
+      )
 
       return { ok: true, data }
     } catch {
@@ -122,7 +129,10 @@ void app.whenReady().then(async () => {
     }
 
     try {
-      const data = await Effect.runPromise(library.addFolder(folder))
+      const data = await traceLibraryOperation('library.addFolder', () =>
+        Effect.runPromise(library.addFolder(folder)),
+      )
+
       notifyLibrary(data)
 
       return { ok: true, data }
@@ -141,7 +151,20 @@ void app.whenReady().then(async () => {
     }
   })
 
-  app.on('before-quit', () => database.close())
+  let telemetryStopped = false
+  app.on('before-quit', (event) => {
+    if (telemetryStopped) return
+    event.preventDefault()
+    telemetryStopped = true
+    void stopTelemetry()
+      .catch(() => {
+        // Export failure must not prevent the app from closing.
+      })
+      .finally(() => {
+        database.close()
+        app.quit()
+      })
+  })
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
