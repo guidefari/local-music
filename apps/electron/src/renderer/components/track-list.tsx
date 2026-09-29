@@ -4,14 +4,14 @@ import { Cover } from "./cover"
 
 export function TrackList(props: { tracks: ReadonlyArray<Track>; covers: ScanResult["covers"] }) {
   return (
-    <div class="track-list" role="list" aria-label="Tracks">
-      <Show when={props.tracks.length === 0}><div class="empty-list">No tracks to show</div></Show>
+    <div class="min-h-0 flex-1 overflow-auto rounded-[9px] border border-line bg-panel" role="list" aria-label="Tracks">
+      <Show when={props.tracks.length === 0}><div class="p-7 text-subtle">No tracks to show</div></Show>
       <For each={props.tracks.slice(0, 500)}>{(track, index) => (
-        <div class="track-row" role="listitem">
-          <span class="track-number">{String(index() + 1).padStart(2, "0")}</span>
+        <div class="flex min-h-[66px] items-center gap-[14px] border-b border-line px-4 py-[9px] last:border-b-0" role="listitem">
+          <span class="w-7 shrink-0 font-data text-[13px] text-subtle tabular-nums">{String(index() + 1).padStart(2, "0")}</span>
           <Cover id={track.coverId} covers={props.covers} size="small" />
-          <div class="track-copy"><strong>{track.title}</strong><span>{track.artist} · {track.album}</span></div>
-          <time class="duration">{Math.floor(track.durationSeconds / 60)}:{String(track.durationSeconds % 60).padStart(2, "0")}</time>
+          <div class="flex min-w-0 flex-1 flex-col gap-[5px]"><strong class="truncate font-semibold">{track.title}</strong><span class="truncate text-[13px] text-subtle">{track.artist} · {track.album}</span></div>
+          <time class="font-data text-[13px] text-subtle tabular-nums">{Math.floor(track.durationSeconds / 60)}:{String(track.durationSeconds % 60).padStart(2, "0")}</time>
         </div>
       )}</For>
     </div>

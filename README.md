@@ -1,12 +1,12 @@
 # local-music
 
-A local-file-first music library POC built with Electron, Solid, and Effect. Rust is used for the read-only audio scanner, not for the desktop UI.
+A local-file-first music library POC built with Electron, Solid, Tailwind CSS, and Effect. Rust is used for the read-only audio scanner, not for the desktop UI.
 
 ## Run
 
 Install the JavaScript workspace with `bun install`, then run `bun run dev:electron`. This builds the Rust scanner and starts Electron. Choose a folder of local music to scan MP3, M4A, FLAC, WAV, AIFF, OGG, and Opus files. The app reads embedded metadata and artwork and lets you browse albums and search tracks, artists, albums, and paths. It does not write to your music files.
 
-Bun builds the Electron main and preload processes, and Vite compiles the Solid renderer. Effect `4.0.0-rc.118` runs and validates scans. Drizzle is installed for the upcoming persistent library; no database or schema exists yet. The development-only FPS meter is implemented in Solid.
+Bun builds the Electron main and preload processes, and Vite compiles the Solid renderer with Tailwind CSS v4. The warm light and charcoal dark tokens live in `apps/electron/src/styles.css`. Effect `4.0.0-rc.118` runs and validates scans. Drizzle is installed for the upcoming persistent library; no database or schema exists yet. The development-only FPS meter is implemented in Solid.
 
 The Electron source is grouped by process: `src/main` owns native IPC and the scanner adapter, `src/preload` exposes the narrow renderer bridge, `src/shared` owns the library contract, and `src/renderer` owns the Solid UI. Scanner protocol tests live beside the main-process adapter.
 

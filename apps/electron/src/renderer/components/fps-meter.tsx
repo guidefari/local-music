@@ -20,5 +20,5 @@ export function FPSMeter() {
     onCleanup(() => cancelAnimationFrame(frame))
   })
 
-  return <output class="fps-meter" aria-label="Frames per second">{fps()} FPS</output>
+  return <output class="pointer-events-none fixed right-3 bottom-3 min-w-[72px] rounded-[5px] bg-soft px-2 py-[5px] text-center font-data text-[11px] text-ink opacity-85" aria-label="Frames per second">{fps()} FPS</output>
 }
