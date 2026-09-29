@@ -33,7 +33,10 @@ export function Player(props: {
     audio.load()
     setPosition(0)
     setDuration(track.durationSeconds)
-    void audio.play().catch(() => props.onError(`Could not play “${track.title}”.`))
+    audio.play().catch((error) => {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      props.onError(`Could not play “${track.title}”.`)
+    })
   })
 
   const setPlayback = (next: boolean) => {
