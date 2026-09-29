@@ -1,4 +1,4 @@
-import { Show, createEffect, createResource, createSignal, onCleanup } from 'solid-js'
+import { Show, createResource } from 'solid-js'
 
 export function Cover(props: { trackId: string | null; size: 'small' | 'large' }) {
   const size = () => (props.size === 'small' ? 'size-[46px]' : 'size-[76px]')
@@ -10,29 +10,18 @@ export function Cover(props: { trackId: string | null; size: 'small' | 'large' }
 
       if (!reply.ok) return null
 
-      return { mimeType: reply.mimeType, bytes: reply.bytes }
+      return new Promise<string | null>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result instanceof ArrayBuffer ? null : reader.result)
+        reader.onerror = () => resolve(null)
+        reader.readAsDataURL(new Blob([new Uint8Array(reply.bytes)], { type: reply.mimeType }))
+      })
     },
   )
 
-  const [source, setSource] = createSignal<string | null>(null)
-
-  createEffect(() => {
-    const image = artwork()
-
-    const next = image
-      ? URL.createObjectURL(new Blob([new Uint8Array(image.bytes)], { type: image.mimeType }))
-      : null
-
-    setSource(next)
-
-    onCleanup(() => {
-      if (next) URL.revokeObjectURL(next)
-    })
-  })
-
   return (
     <Show
-      when={source()}
+      when={artwork()}
       fallback={
         <div
           class={`grid shrink-0 place-items-center rounded-md bg-soft ${size()}`}
