@@ -1,5 +1,5 @@
 import { For, Show } from "solid-js"
-import type { ScanResult, Track } from "./contract"
+import type { ScanResult, Track } from "../../shared/library-contract"
 import { Cover } from "./cover"
 
 export function TrackList(props: { tracks: ReadonlyArray<Track>; covers: ScanResult["covers"] }) {

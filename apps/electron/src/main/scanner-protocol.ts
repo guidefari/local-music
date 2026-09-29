@@ -1,6 +1,6 @@
 import { decode } from "@msgpack/msgpack"
 import { Effect, Schema } from "effect"
-import { ScanResult, Track } from "./contract"
+import { ScanResult, Track } from "../shared/library-contract"
 
 const Artwork = Schema.Struct({
   id: Schema.String,

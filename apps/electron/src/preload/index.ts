@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron"
 import { Schema } from "effect"
-import { ScanReply } from "./contract"
+import { ScanReply } from "../shared/library-contract"
 
 contextBridge.exposeInMainWorld("localMusic", {
   chooseFolder: async (): Promise<ScanReply> => {

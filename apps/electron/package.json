@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "main": "dist/main.js",
   "scripts": {
-    "build": "bun build src/main.ts src/preload.ts --target=node --format=cjs --external electron --outdir dist && vite build && cp assets/app-icon.svg dist/app-icon.svg",
+    "build": "bun build src/main/index.ts --target=node --format=cjs --external electron --outfile dist/main.js && bun build src/preload/index.ts --target=node --format=cjs --external electron --outfile dist/preload.js && vite build && cp assets/app-icon.svg dist/app-icon.svg",
     "dev": "bun run build && electron .",
     "check": "tsc --noEmit",
     "test": "bun test"

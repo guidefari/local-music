@@ -8,6 +8,8 @@ Install the JavaScript workspace with `bun install`, then run `bun run dev:elect
 
 Bun builds the Electron main and preload processes, and Vite compiles the Solid renderer. Effect `4.0.0-rc.118` runs and validates scans. Drizzle is installed for the upcoming persistent library; no database or schema exists yet. The development-only FPS meter is implemented in Solid.
 
+The Electron source is grouped by process: `src/main` owns native IPC and the scanner adapter, `src/preload` exposes the narrow renderer bridge, `src/shared` owns the library contract, and `src/renderer` owns the Solid UI. Scanner protocol tests live beside the main-process adapter.
+
 The Rust scanner lives in `crates/scanner`. It has no UI dependencies and sends a versioned, length-prefixed MessagePack scan result to Electron over stdout. Artwork crosses that process boundary as bytes, not base64; Electron prepares data URLs for the renderer. Run it directly with `cargo run -p local-music-scanner --bin local-music-scan -- /path/to/music > scan.msgpack` (the file includes a four-byte frame header). The Electron app is currently a development app, not a packaged distribution.
 
 Run `cargo test`, `bun run check:electron`, and `bun run test:electron` to verify both sides. The [wayfinder map](wayfinder/map.md) tracks remaining product decisions. Playlist editing, playback, metadata correction, and library persistence are not implemented yet.

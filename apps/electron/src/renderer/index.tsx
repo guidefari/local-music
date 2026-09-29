@@ -1,9 +1,9 @@
 import { Show, createMemo, createSignal } from "solid-js"
 import { render } from "solid-js/web"
-import type { ScanResult } from "./contract"
-import { Albums } from "./albums"
-import { FPSMeter } from "./fps-meter"
-import { TrackList } from "./track-list"
+import type { ScanResult } from "../shared/library-contract"
+import { Albums } from "./components/albums"
+import { FPSMeter } from "./components/fps-meter"
+import { TrackList } from "./components/track-list"
 
 function App() {
   const [folder, setFolder] = createSignal<string | null>(null)

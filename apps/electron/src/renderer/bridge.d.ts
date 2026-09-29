@@ -1,4 +1,4 @@
-import type { ScanReply } from "./contract"
+import type { ScanReply } from "../shared/library-contract"
 
 declare global {
   interface Window {

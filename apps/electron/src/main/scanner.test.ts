@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Effect, Schema } from "effect"
-import { ScanResult } from "./contract"
+import { ScanResult } from "../shared/library-contract"
 import { scanFolder } from "./scanner"
 
 const folders: string[] = []

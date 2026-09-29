@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron"
 import { join } from "node:path"
 import { Effect } from "effect"
 import { scanFolder } from "./scanner"
-import type { ScanReply } from "./contract"
+import type { ScanReply } from "../shared/library-contract"
 
 function createWindow() {
   const output = join(app.getAppPath(), "dist")

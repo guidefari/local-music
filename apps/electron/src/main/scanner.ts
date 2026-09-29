@@ -5,7 +5,7 @@ import { Effect, Schema } from "effect"
 import { decodeScanFrame } from "./scanner-protocol"
 
 const execFileAsync = promisify(execFile)
-const scanner = resolve(__dirname, "../../../target/debug/local-music-scan")
+const scanner = resolve(__dirname, "../../../../target/debug/local-music-scan")
 
 export class ScanFailed extends Schema.TaggedError<ScanFailed>()("ScanFailed", {
   message: Schema.String,
