@@ -92,17 +92,28 @@ const readTrack = Effect.fn('Scanner.readTrack')(function* (path: string) {
   }
 })
 
+export const scanFolderStream = (folder: string) =>
+  Stream.fromAsyncIterable(
+    audioFiles(folder),
+    () => new ScanFailed({ message: 'The music folder could not be fully traversed.' }),
+  ).pipe(
+    Stream.mapEffect(
+      (path) =>
+        readTrack(path).pipe(
+          Effect.result,
+          Effect.map((result) => ({ path, result })),
+        ),
+      { concurrency: 4 },
+    ),
+  )
+
 export const scanFolder = Effect.fn('Scanner.scanFolder')(function* (folder: string) {
   const tracks: Track[] = []
   const covers: Record<string, string> = {}
   let skipped = 0
 
-  yield* Stream.fromAsyncIterable(
-    audioFiles(folder),
-    () => new ScanFailed({ message: 'The music folder could not be fully traversed.' }),
-  ).pipe(
-    Stream.mapEffect((path) => readTrack(path).pipe(Effect.result), { concurrency: 4 }),
-    Stream.runForEach((result) =>
+  yield* scanFolderStream(folder).pipe(
+    Stream.runForEach(({ result }) =>
       Effect.sync(() =>
         Result.match(result, {
           onFailure: () => {

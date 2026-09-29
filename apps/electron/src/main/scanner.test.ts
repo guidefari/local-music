@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, test } from 'node:test'
 
-import { Effect, Schema } from 'effect'
+import { Effect, Result, Schema, Stream } from 'effect'
 
 import { ScanResult } from '../shared/library-contract'
-import { scanFolder } from './scanner'
+import { scanFolder, scanFolderStream } from './scanner'
 
 const folders: string[] = []
 
@@ -52,6 +52,11 @@ test('scanner visits nested folders, counts unreadable audio, and does not follo
   const result = await Effect.runPromise(scanFolder(folder))
   assert.equal(result.tracks.length, 0)
   assert.equal(result.skipped, 1)
+
+  const observations = await Effect.runPromise(Stream.runCollect(scanFolderStream(folder)))
+  assert.equal(observations.length, 1)
+  assert.equal(observations[0]?.path, join(folder, 'nested', 'broken.MP3'))
+  assert.equal(observations[0] && Result.isFailure(observations[0].result), true)
 })
 
 test('scanner fails when the source cannot be traversed', async () => {
