@@ -9,9 +9,9 @@ import {
   LibrarySnapshot,
   LibraryStore,
   type ScannedPath,
-} from '../../../contracts/library'
-import type { LibraryDatabase } from './open'
-import { librarySources, scanStagePaths, tracks } from './schema'
+} from '@/contracts/library'
+import type { LibraryDatabase } from '@/implementation/main/db/open'
+import { librarySources, scanStagePaths, tracks } from '@/implementation/main/db/schema'
 
 const storageFailure = () => new LibraryFailure({ message: 'Could not read or save the library.' })
 

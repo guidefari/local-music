@@ -5,7 +5,7 @@ import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
 import { migrate } from 'drizzle-orm/libsql/migrator'
 
-import * as schema from './schema'
+import * as schema from '@/implementation/main/db/schema'
 
 export async function openLibraryDatabase(path: string, migrationsFolder: string) {
   await mkdir(dirname(path), { recursive: true })

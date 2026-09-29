@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 
 import { Effect } from 'effect'
 
-import type { Library } from '../../contracts/library'
+import type { Library } from '@/contracts/library'
 
 const artworkPath =
   /^\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/([0-9a-f]{64})$/

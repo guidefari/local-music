@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { Effect, Layer, Semaphore } from 'effect'
 
-import { ArtworkCache, LibraryFailure } from '../../contracts/library'
+import { ArtworkCache, LibraryFailure } from '@/contracts/library'
 
 const maxImageBytes = 8 * 1024 * 1024
 

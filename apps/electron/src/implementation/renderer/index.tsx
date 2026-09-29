@@ -1,10 +1,10 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
 import { render } from 'solid-js/web'
 
-import type { LibrarySnapshot } from '../../contracts/library'
-import { Albums } from './components/albums'
-import { FPSMeter } from './components/fps-meter'
-import { TrackList } from './components/track-list'
+import type { LibrarySnapshot } from '@/contracts/library'
+import { Albums } from '@/implementation/renderer/components/albums'
+import { FPSMeter } from '@/implementation/renderer/components/fps-meter'
+import { TrackList } from '@/implementation/renderer/components/track-list'
 
 function App() {
   const [library, setLibrary] = createSignal<LibrarySnapshot | null>(null)

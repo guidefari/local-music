@@ -1,7 +1,7 @@
 import { For, Show } from 'solid-js'
 
-import type { LibraryTrack } from '../../../contracts/library'
-import { Cover } from './cover'
+import type { LibraryTrack } from '@/contracts/library'
+import { Cover } from '@/implementation/renderer/components/cover'
 
 export function TrackList(props: { tracks: ReadonlyArray<LibraryTrack> }) {
   return (

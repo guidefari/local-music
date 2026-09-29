@@ -6,8 +6,8 @@ import { afterEach, test } from 'node:test'
 
 import { Effect, Schema, Stream } from 'effect'
 
-import { LibrarySnapshot } from '../../contracts/library'
-import { sourceScanner } from './scanner'
+import { LibrarySnapshot } from '@/contracts/library'
+import { sourceScanner } from '@/implementation/main/scanner'
 
 const folders: string[] = []
 

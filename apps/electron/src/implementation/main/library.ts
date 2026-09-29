@@ -9,7 +9,7 @@ import {
   LibraryFailure,
   LibraryStore,
   SourceScanner,
-} from '../../contracts/library'
+} from '@/contracts/library'
 
 export const makeLibrary = Effect.fn('Library.make')(function* (
   store: typeof LibraryStore.Service,

@@ -3,13 +3,13 @@ import { join } from 'node:path'
 import { Effect, Layer, Schema } from 'effect'
 import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron'
 
-import { Library, type LibraryReply, type LibrarySnapshot } from '../../contracts/library'
-import { artworkCacheLayer } from './artwork-cache'
-import { serveArtwork } from './artwork-protocol'
-import { openLibraryDatabase } from './db/open'
-import { libraryStoreLayer } from './db/store'
-import { libraryLayer } from './library'
-import { sourceScannerLayer } from './scanner'
+import { Library, type LibraryReply, type LibrarySnapshot } from '@/contracts/library'
+import { artworkCacheLayer } from '@/implementation/main/artwork-cache'
+import { serveArtwork } from '@/implementation/main/artwork-protocol'
+import { openLibraryDatabase } from '@/implementation/main/db/open'
+import { libraryStoreLayer } from '@/implementation/main/db/store'
+import { libraryLayer } from '@/implementation/main/library'
+import { sourceScannerLayer } from '@/implementation/main/scanner'
 
 function createWindow() {
   const output = join(app.getAppPath(), 'dist')

@@ -6,8 +6,8 @@ import { afterEach, test } from 'node:test'
 
 import { Effect } from 'effect'
 
-import { openLibraryDatabase } from './open'
-import { makeLibraryStore } from './store'
+import { openLibraryDatabase } from '@/implementation/main/db/open'
+import { makeLibraryStore } from '@/implementation/main/db/store'
 
 const directories: string[] = []
 

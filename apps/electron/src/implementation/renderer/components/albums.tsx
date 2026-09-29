@@ -1,7 +1,7 @@
 import { For, createMemo } from 'solid-js'
 
-import type { LibraryTrack } from '../../../contracts/library'
-import { Cover } from './cover'
+import type { LibraryTrack } from '@/contracts/library'
+import { Cover } from '@/implementation/renderer/components/cover'
 
 export function Albums(props: { tracks: ReadonlyArray<LibraryTrack> }) {
   const albums = createMemo(() => {

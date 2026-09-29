@@ -1,4 +1,4 @@
-import type { LibraryReply, LibrarySnapshot } from '../../contracts/library'
+import type { LibraryReply, LibrarySnapshot } from '@/contracts/library'
 
 declare global {
   interface Window {

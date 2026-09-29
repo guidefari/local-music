@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { contextBridge, ipcRenderer } from 'electron'
 
-import { LibraryReply, LibrarySnapshot } from '../../contracts/library'
+import { LibraryReply, LibrarySnapshot } from '@/contracts/library'
 
 contextBridge.exposeInMainWorld('localMusic', {
   loadLibrary: async (): Promise<LibraryReply> => {

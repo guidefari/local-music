@@ -6,12 +6,12 @@ import { afterEach, test } from 'node:test'
 
 import { Effect, Stream } from 'effect'
 
-import { LibraryFailure, SourceScanner, type ScannedPath } from '../../contracts/library'
-import { makeArtworkCache } from './artwork-cache'
-import { serveArtwork } from './artwork-protocol'
-import { openLibraryDatabase } from './db/open'
-import { makeLibraryStore } from './db/store'
-import { makeLibrary } from './library'
+import { LibraryFailure, SourceScanner, type ScannedPath } from '@/contracts/library'
+import { makeArtworkCache } from '@/implementation/main/artwork-cache'
+import { serveArtwork } from '@/implementation/main/artwork-protocol'
+import { openLibraryDatabase } from '@/implementation/main/db/open'
+import { makeLibraryStore } from '@/implementation/main/db/store'
+import { makeLibrary } from '@/implementation/main/library'
 
 const directories: string[] = []
 

@@ -13,7 +13,7 @@
       },
     },
     "apps/electron": {
-      "name": "@local-music/electron",
+      "name": "@local-music/desktop",
       "version": "0.1.0",
       "dependencies": {
         "@libsql/client": "^0.18.0",
@@ -173,7 +173,7 @@
 
     "@libsql/win32-x64-msvc": ["@libsql/win32-x64-msvc@0.5.29", "", { "os": "win32", "cpu": "x64" }, "sha512-4/0CvEdhi6+KjMxMaVbFM2n2Z44escBRoEYpR+gZg64DdetzGnYm8mcNLcoySaDJZNaBd6wz5DNdgRmcI4hXcg=="],
 
-    "@local-music/electron": ["@local-music/electron@workspace:apps/electron"],
+    "@local-music/desktop": ["@local-music/desktop@workspace:apps/electron"],
 
     "@neon-rs/load": ["@neon-rs/load@0.0.4", "", {}, "sha512-kTPhdZyTQxB+2wpiRcFWrDcejc4JI6tkPuS7UZCG4l6Zvc5kU/gGQ/ozvHTh1XR5tS+UlfAfGuPajjzQjCiHCw=="],
 
