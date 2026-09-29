@@ -12,6 +12,7 @@ function formatTime(seconds: number): string {
 /** Plays indexed tracks and renders the persistent transport controls. */
 export function Player(props: {
   track: LibraryTrack | null
+  context: string
   hasPrevious: boolean
   hasNext: boolean
   onPrevious: () => void
@@ -144,7 +145,7 @@ export function Player(props: {
             </div>
             <div class="player-context">
               <span>Playing from</span>
-              <strong>{track().album}</strong>
+              <strong>{props.context}</strong>
             </div>
           </>
         )}

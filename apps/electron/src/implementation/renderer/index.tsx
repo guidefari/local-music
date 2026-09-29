@@ -6,8 +6,14 @@ import { Albums } from '@/implementation/renderer/components/albums'
 import { FPSMeter } from '@/implementation/renderer/components/fps-meter'
 import { Player } from '@/implementation/renderer/components/player'
 import { TrackList } from '@/implementation/renderer/components/track-list'
+import { groupAlbums, type Album } from '@/implementation/renderer/lib/albums'
 
 type View = 'home' | 'tracks'
+
+interface Queue {
+  readonly label: string
+  readonly tracks: ReadonlyArray<LibraryTrack>
+}
 
 function App() {
   let searchInput: HTMLInputElement | undefined
@@ -17,6 +23,7 @@ function App() {
   const [busy, setBusy] = createSignal(false)
   const [scanning, setScanning] = createSignal<string[]>([])
   const [error, setError] = createSignal<string | null>(null)
+  const [queue, setQueue] = createSignal<Queue>({ label: '', tracks: [] })
   const [currentTrack, setCurrentTrack] = createSignal<LibraryTrack | null>(null)
   const [playing, setPlaying] = createSignal(false)
 
@@ -29,24 +36,18 @@ function App() {
       ) ?? [],
   )
 
-  const playable = createMemo(
-    () => library()?.tracks.filter((track) => track.presence === 'present') ?? [],
-  )
-
   const currentIndex = createMemo(() => {
     const current = currentTrack()
 
-    return current ? playable().findIndex((track) => track.id === current.id) : -1
+    return current ? queue().tracks.findIndex((track) => track.id === current.id) : -1
   })
 
   const artists = createMemo(() => new Set(library()?.tracks.map((track) => track.artist)).size)
 
-  const albums = createMemo(
-    () => new Set(library()?.tracks.map((track) => `${track.artist}\0${track.album}`)).size,
-  )
+  const albums = createMemo(() => groupAlbums(library()?.tracks ?? []))
 
   const playAt = (index: number) => {
-    const track = playable()[index]
+    const track = queue().tracks[index]
 
     if (track) {
       setError(null)
@@ -54,10 +55,20 @@ function App() {
     }
   }
 
-  const play = (track: LibraryTrack) => {
+  const playFrom = (label: string, tracks: ReadonlyArray<LibraryTrack>, track: LibraryTrack) => {
     if (track.presence !== 'present') return
+    setQueue({ label, tracks: tracks.filter((item) => item.presence === 'present') })
     setError(null)
     setCurrentTrack(track)
+  }
+
+  const playTrack = (track: LibraryTrack) =>
+    playFrom(query() ? `Search “${query()}”` : 'All tracks', filtered(), track)
+
+  const playAlbum = (album: Album) => {
+    const first = album.tracks.find((track) => track.presence === 'present')
+
+    if (first) playFrom(album.title, album.tracks, first)
   }
 
   onMount(() => {
@@ -201,7 +212,7 @@ function App() {
               <strong>{library()?.tracks.length}</strong> tracks
             </span>
             <span>
-              <strong>{albums()}</strong> albums
+              <strong>{albums().length}</strong> albums
             </span>
             <span>
               <strong>{artists()}</strong> artists
@@ -227,7 +238,7 @@ function App() {
         </Show>
 
         <Show when={!query() && view() === 'home' && library()}>
-          {(snapshot) => <Albums tracks={snapshot().tracks} onPlay={play} />}
+          <Albums albums={albums()} onPlay={playAlbum} />
         </Show>
 
         <section
@@ -246,7 +257,7 @@ function App() {
             tracks={filtered()}
             currentTrackId={currentTrack()?.id ?? null}
             playing={playing()}
-            onPlay={play}
+            onPlay={playTrack}
           />
         </section>
       </main>
@@ -254,7 +265,8 @@ function App() {
       <Player
         track={currentTrack()}
         hasPrevious={currentIndex() > 0}
-        hasNext={currentIndex() >= 0 && currentIndex() < playable().length - 1}
+        hasNext={currentIndex() >= 0 && currentIndex() < queue().tracks.length - 1}
+        context={queue().label}
         onPrevious={() => playAt(currentIndex() - 1)}
         onNext={() => playAt(currentIndex() + 1)}
         onPlayingChange={setPlaying}

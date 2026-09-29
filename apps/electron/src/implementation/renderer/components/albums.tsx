@@ -1,80 +1,38 @@
-import { For, createMemo } from 'solid-js'
+import { For } from 'solid-js'
 
-import type { LibraryTrack } from '@/contracts/library'
 import { Cover } from '@/implementation/renderer/components/cover'
+import type { Album } from '@/implementation/renderer/lib/albums'
 
-/** Summarizes albums and starts playback from their first available track. */
-export function Albums(props: {
-  tracks: ReadonlyArray<LibraryTrack>
-  onPlay: (track: LibraryTrack) => void
-}) {
-  const albums = createMemo(() => {
-    const found = new Map<
-      string,
-      {
-        artist: string
-        title: string
-        count: number
-        firstTrack: LibraryTrack
-        coverTrackId: string | null
-        artworkId: string | null
-      }
-    >()
-
-    for (const track of props.tracks) {
-      const key = `${track.artist}\0${track.album}`
-      const album = found.get(key)
-
-      if (album) {
-        album.count++
-
-        if (album.firstTrack.presence === 'missing' && track.presence === 'present') {
-          album.firstTrack = track
-        }
-
-        if (!album.artworkId && track.artworkId) {
-          album.coverTrackId = track.id
-          album.artworkId = track.artworkId
-        }
-      } else {
-        found.set(key, {
-          artist: track.artist,
-          title: track.album,
-          count: 1,
-          firstTrack: track,
-          coverTrackId: track.artworkId ? track.id : null,
-          artworkId: track.artworkId,
-        })
-      }
-    }
-
-    return found
-  })
-
+/** Shows a shelf of albums and starts playback from their first available track. */
+export function Albums(props: { albums: ReadonlyArray<Album>; onPlay: (album: Album) => void }) {
   return (
     <section class="album-section" aria-labelledby="albums-title">
       <div class="section-heading">
         <h2 id="albums-title">Albums in rotation</h2>
-        <span>{albums().size} in your library</span>
+        <span>{props.albums.length} in your library</span>
       </div>
       <div class="album-shelf">
-        <For each={[...albums().values()].slice(0, 6)}>
+        <For each={props.albums.slice(0, 6)}>
           {(album) => (
             <button
               class="album-card"
               type="button"
-              onClick={() => props.onPlay(album.firstTrack)}
-              disabled={album.firstTrack.presence === 'missing'}
+              onClick={() => props.onPlay(album)}
+              disabled={album.tracks.every((track) => track.presence === 'missing')}
             >
               <span class="album-art">
-                <Cover trackId={album.coverTrackId} artworkId={album.artworkId} size="large" />
+                <Cover
+                  trackId={album.cover?.id ?? null}
+                  artworkId={album.cover?.artworkId ?? null}
+                  size="large"
+                />
                 <span class="album-play" aria-hidden="true">
                   ▶
                 </span>
               </span>
               <strong>{album.title}</strong>
               <span>{album.artist}</span>
-              <small>{album.count} tracks</small>
+              <small>{album.tracks.length} tracks</small>
             </button>
           )}
         </For>
