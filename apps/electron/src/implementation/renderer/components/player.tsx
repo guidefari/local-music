@@ -2,12 +2,7 @@ import { Show, createEffect, createSignal } from 'solid-js'
 
 import type { LibraryTrack } from '@/contracts/library'
 import { Cover } from '@/implementation/renderer/components/cover'
-
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds)) return '0:00'
-
-  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
-}
+import { formatTime } from '@/implementation/renderer/lib/time'
 
 /** Plays indexed tracks and renders the persistent transport controls. */
 export function Player(props: {

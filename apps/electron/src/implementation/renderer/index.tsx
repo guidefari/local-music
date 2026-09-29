@@ -2,13 +2,22 @@ import { For, Show, createMemo, createSignal, onCleanup, onMount } from 'solid-j
 import { render } from 'solid-js/web'
 
 import type { LibrarySnapshot, LibraryTrack } from '@/contracts/library'
+import { AlbumGrid } from '@/implementation/renderer/components/album-grid'
+import { AlbumPage } from '@/implementation/renderer/components/album-page'
 import { Albums } from '@/implementation/renderer/components/albums'
 import { FPSMeter } from '@/implementation/renderer/components/fps-meter'
 import { Player } from '@/implementation/renderer/components/player'
 import { TrackList } from '@/implementation/renderer/components/track-list'
 import { groupAlbums, type Album } from '@/implementation/renderer/lib/albums'
 
-type View = 'home' | 'tracks'
+type View = 'home' | 'albums' | 'tracks'
+
+const lenses: ReadonlyArray<{ readonly view: View; readonly label: string; readonly key: string }> =
+  [
+    { view: 'home', label: 'Library', key: '1' },
+    { view: 'albums', label: 'Albums', key: '2' },
+    { view: 'tracks', label: 'Tracks', key: '3' },
+  ]
 
 interface Queue {
   readonly label: string
@@ -20,6 +29,7 @@ function App() {
   const [library, setLibrary] = createSignal<LibrarySnapshot | null>(null)
   const [query, setQuery] = createSignal('')
   const [view, setView] = createSignal<View>('home')
+  const [openAlbumKey, setOpenAlbumKey] = createSignal<string | null>(null)
   const [busy, setBusy] = createSignal(false)
   const [scanning, setScanning] = createSignal<string[]>([])
   const [error, setError] = createSignal<string | null>(null)
@@ -45,6 +55,28 @@ function App() {
   const artists = createMemo(() => new Set(library()?.tracks.map((track) => track.artist)).size)
 
   const albums = createMemo(() => groupAlbums(library()?.tracks ?? []))
+
+  const openAlbum = createMemo(() => albums().find((album) => album.key === openAlbumKey()) ?? null)
+
+  const showView = (next: View) => {
+    setOpenAlbumKey(null)
+    setView(next)
+  }
+
+  const showAlbum = (album: Album) => {
+    setQuery('')
+    setOpenAlbumKey(album.key)
+  }
+
+  const heading = () => {
+    if (query()) return `Results for “${query()}”`
+
+    if (view() === 'albums') return 'Albums'
+
+    if (view() === 'tracks') return 'All tracks'
+
+    return 'Library'
+  }
 
   const playAt = (index: number) => {
     const track = queue().tracks[index]
@@ -92,9 +124,13 @@ function App() {
 
       if (event.target instanceof HTMLInputElement) return
 
-      if (event.key === '1') setView('home')
+      if (event.key === 'Escape') setOpenAlbumKey(null)
 
-      if (event.key === '2') setView('tracks')
+      if (event.key === '1') showView('home')
+
+      if (event.key === '2') showView('albums')
+
+      if (event.key === '3') showView('tracks')
     }
 
     document.addEventListener('keydown', onKeyDown)
@@ -153,16 +189,17 @@ function App() {
           <strong>local-music</strong>
         </div>
         <nav class="lenses" aria-label="Library views">
-          <button type="button" aria-current={view() === 'home'} onClick={() => setView('home')}>
-            Library <kbd>1</kbd>
-          </button>
-          <button
-            type="button"
-            aria-current={view() === 'tracks'}
-            onClick={() => setView('tracks')}
-          >
-            Tracks <kbd>2</kbd>
-          </button>
+          <For each={lenses}>
+            {(lens) => (
+              <button
+                type="button"
+                aria-current={view() === lens.view}
+                onClick={() => showView(lens.view)}
+              >
+                {lens.label} <kbd>{lens.key}</kbd>
+              </button>
+            )}
+          </For>
         </nav>
         <label class="global-search" for="search">
           <span aria-hidden="true">⌕</span>
@@ -189,77 +226,105 @@ function App() {
       </header>
 
       <main class="library-main">
-        <div class="library-heading">
-          <div>
-            <span class="eyebrow">Your collection</span>
-            <h1>
-              {query() ? `Results for “${query()}”` : view() === 'home' ? 'Library' : 'All tracks'}
-            </h1>
-          </div>
-          <p role="status" classList={{ error: Boolean(error()) }}>
-            {error() ??
-              (busy() || scanning().length
-                ? 'Scanning music…'
-                : library()
-                  ? 'Indexed and ready to play'
-                  : 'Loading your library…')}
-          </p>
-        </div>
+        <Show
+          when={!query() && openAlbum()}
+          fallback={
+            <>
+              <div class="library-heading">
+                <div>
+                  <span class="eyebrow">Your collection</span>
+                  <h1>{heading()}</h1>
+                </div>
+                <p role="status" classList={{ error: Boolean(error()) }}>
+                  {error() ??
+                    (busy() || scanning().length
+                      ? 'Scanning music…'
+                      : library()
+                        ? 'Indexed and ready to play'
+                        : 'Loading your library…')}
+                </p>
+              </div>
 
-        <Show when={library()}>
-          <div class="library-stats" aria-label="Library summary">
-            <span>
-              <strong>{library()?.tracks.length}</strong> tracks
-            </span>
-            <span>
-              <strong>{albums().length}</strong> albums
-            </span>
-            <span>
-              <strong>{artists()}</strong> artists
-            </span>
-            <span>
-              <strong>{library()?.sources.length}</strong> folders
-            </span>
-            <div class="source-actions">
-              <For each={library()?.sources}>
-                {(source) => (
-                  <button
-                    type="button"
-                    title={`Rescan ${source.rootPath}`}
-                    disabled={scanning().includes(source.id)}
-                    onClick={() => void rescan(source.id)}
-                  >
-                    {scanning().includes(source.id) ? 'Scanning…' : 'Rescan'}
-                  </button>
-                )}
-              </For>
-            </div>
-          </div>
-        </Show>
+              <Show when={library()}>
+                <div class="library-stats" aria-label="Library summary">
+                  <span>
+                    <strong>{library()?.tracks.length}</strong> tracks
+                  </span>
+                  <span>
+                    <strong>{albums().length}</strong> albums
+                  </span>
+                  <span>
+                    <strong>{artists()}</strong> artists
+                  </span>
+                  <span>
+                    <strong>{library()?.sources.length}</strong> folders
+                  </span>
+                  <div class="source-actions">
+                    <For each={library()?.sources}>
+                      {(source) => (
+                        <button
+                          type="button"
+                          title={`Rescan ${source.rootPath}`}
+                          disabled={scanning().includes(source.id)}
+                          onClick={() => void rescan(source.id)}
+                        >
+                          {scanning().includes(source.id) ? 'Scanning…' : 'Rescan'}
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              </Show>
 
-        <Show when={!query() && view() === 'home' && library()}>
-          <Albums albums={albums()} onPlay={playAlbum} />
-        </Show>
+              <Show when={!query() && view() === 'home' && library()}>
+                <Albums
+                  albums={albums()}
+                  onOpen={showAlbum}
+                  onPlay={playAlbum}
+                  onShowAll={() => showView('albums')}
+                />
+              </Show>
 
-        <section
-          class={`tracks-section ${!query() && view() === 'home' ? 'with-albums' : ''}`}
-          aria-labelledby="tracks-title"
+              <Show when={!query() && view() === 'albums'}>
+                <AlbumGrid albums={albums()} onOpen={showAlbum} onPlay={playAlbum} />
+              </Show>
+
+              <Show when={query() || view() !== 'albums'}>
+                <section
+                  class={`tracks-section ${!query() && view() === 'home' ? 'with-albums' : ''}`}
+                  aria-labelledby="tracks-title"
+                >
+                  <div class="section-heading">
+                    <h2 id="tracks-title">{query() ? 'Matching tracks' : 'Tracks'}</h2>
+                    <span>
+                      {filtered().length > 500
+                        ? `${filtered().length} found · showing 500`
+                        : `${filtered().length} ${filtered().length === 1 ? 'track' : 'tracks'}`}
+                    </span>
+                  </div>
+                  <TrackList
+                    tracks={filtered()}
+                    layout="library"
+                    currentTrackId={currentTrack()?.id ?? null}
+                    playing={playing()}
+                    onPlay={playTrack}
+                  />
+                </section>
+              </Show>
+            </>
+          }
         >
-          <div class="section-heading">
-            <h2 id="tracks-title">{query() ? 'Matching tracks' : 'Tracks'}</h2>
-            <span>
-              {filtered().length > 500
-                ? `${filtered().length} found · showing 500`
-                : `${filtered().length} ${filtered().length === 1 ? 'track' : 'tracks'}`}
-            </span>
-          </div>
-          <TrackList
-            tracks={filtered()}
-            currentTrackId={currentTrack()?.id ?? null}
-            playing={playing()}
-            onPlay={playTrack}
-          />
-        </section>
+          {(album) => (
+            <AlbumPage
+              album={album()}
+              currentTrackId={currentTrack()?.id ?? null}
+              playing={playing()}
+              onBack={() => setOpenAlbumKey(null)}
+              onPlay={playAlbum}
+              onPlayTrack={(track) => playFrom(album().title, album().tracks, track)}
+            />
+          )}
+        </Show>
       </main>
 
       <Player

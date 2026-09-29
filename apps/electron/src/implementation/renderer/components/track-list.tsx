@@ -2,16 +2,23 @@ import { For, Show } from 'solid-js'
 
 import type { LibraryTrack } from '@/contracts/library'
 import { Cover } from '@/implementation/renderer/components/cover'
+import { formatTime } from '@/implementation/renderer/lib/time'
 
 /** Renders the searchable track table and exposes play intent to the owning player. */
 export function TrackList(props: {
   tracks: ReadonlyArray<LibraryTrack>
+  layout: 'library' | 'album'
   currentTrackId: string | null
   playing: boolean
   onPlay: (track: LibraryTrack) => void
 }) {
   return (
-    <div class="track-table min-h-0 flex-1 overflow-auto" role="list" aria-label="Tracks">
+    <div
+      class="track-table min-h-0 flex-1 overflow-auto"
+      classList={{ 'is-album': props.layout === 'album' }}
+      role="list"
+      aria-label="Tracks"
+    >
       <div class="track-head" aria-hidden="true">
         <span>#</span>
         <span>Title</span>
@@ -53,10 +60,7 @@ export function TrackList(props: {
               </span>
             </div>
             <span class="track-album">{track.album}</span>
-            <time class="track-time">
-              {Math.floor(track.durationSeconds / 60)}:
-              {String(track.durationSeconds % 60).padStart(2, '0')}
-            </time>
+            <time class="track-time">{formatTime(track.durationSeconds)}</time>
           </div>
         )}
       </For>

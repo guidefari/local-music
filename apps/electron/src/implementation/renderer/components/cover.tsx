@@ -31,6 +31,8 @@ export function Cover(props: {
         class={`shrink-0 rounded-md object-cover ${size()}`}
         src={`local-music-artwork://cover/${props.trackId}/${props.artworkId}`}
         alt=""
+        loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
       />
     </Show>
