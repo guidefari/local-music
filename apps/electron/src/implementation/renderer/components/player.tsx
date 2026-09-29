@@ -1,4 +1,4 @@
-import { Show, createEffect, createSignal } from 'solid-js'
+import { Show, createEffect, createSignal, onCleanup, onMount } from 'solid-js'
 
 import type { LibraryTrack } from '@/contracts/library'
 import { Cover } from '@/implementation/renderer/components/cover'
@@ -50,6 +50,21 @@ export function Player(props: {
     if (audio.paused) void audio.play()
     else audio.pause()
   }
+
+  onMount(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return
+
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement)
+        return
+
+      event.preventDefault()
+      toggle()
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    onCleanup(() => document.removeEventListener('keydown', onKeyDown))
+  })
 
   const seek = (value: string) => {
     if (!audio) return
@@ -121,6 +136,7 @@ export function Player(props: {
                   type="button"
                   onClick={toggle}
                   aria-label="Play or pause"
+                  title="Play or pause (Space)"
                 >
                   {playing() ? 'Ⅱ' : '▶'}
                 </button>
