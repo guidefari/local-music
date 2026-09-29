@@ -1,17 +1,24 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js'
 import { render } from 'solid-js/web'
 
-import type { LibrarySnapshot } from '@/contracts/library'
+import type { LibrarySnapshot, LibraryTrack } from '@/contracts/library'
 import { Albums } from '@/implementation/renderer/components/albums'
 import { FPSMeter } from '@/implementation/renderer/components/fps-meter'
+import { Player } from '@/implementation/renderer/components/player'
 import { TrackList } from '@/implementation/renderer/components/track-list'
 
+type View = 'home' | 'tracks'
+
 function App() {
+  let searchInput: HTMLInputElement | undefined
   const [library, setLibrary] = createSignal<LibrarySnapshot | null>(null)
   const [query, setQuery] = createSignal('')
+  const [view, setView] = createSignal<View>('home')
   const [busy, setBusy] = createSignal(false)
   const [scanning, setScanning] = createSignal<string[]>([])
   const [error, setError] = createSignal<string | null>(null)
+  const [currentTrack, setCurrentTrack] = createSignal<LibraryTrack | null>(null)
+  const [playing, setPlaying] = createSignal(false)
 
   const filtered = createMemo(
     () =>
@@ -21,6 +28,37 @@ function App() {
         ),
       ) ?? [],
   )
+
+  const playable = createMemo(
+    () => library()?.tracks.filter((track) => track.presence === 'present') ?? [],
+  )
+
+  const currentIndex = createMemo(() => {
+    const current = currentTrack()
+
+    return current ? playable().findIndex((track) => track.id === current.id) : -1
+  })
+
+  const artists = createMemo(() => new Set(library()?.tracks.map((track) => track.artist)).size)
+
+  const albums = createMemo(
+    () => new Set(library()?.tracks.map((track) => `${track.artist}\0${track.album}`)).size,
+  )
+
+  const playAt = (index: number) => {
+    const track = playable()[index]
+
+    if (track) {
+      setError(null)
+      setCurrentTrack(track)
+    }
+  }
+
+  const play = (track: LibraryTrack) => {
+    if (track.presence !== 'present') return
+    setError(null)
+    setCurrentTrack(track)
+  }
 
   onMount(() => {
     const stopLibrary = window.localMusic.onLibraryChanged(setLibrary)
@@ -34,6 +72,21 @@ function App() {
 
       if (state.error) setError(state.error)
     })
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === 'k') {
+        event.preventDefault()
+        searchInput?.focus()
+      }
+
+      if (event.target instanceof HTMLInputElement) return
+
+      if (event.key === '1') setView('home')
+
+      if (event.key === '2') setView('tracks')
+    }
+
+    document.addEventListener('keydown', onKeyDown)
 
     void window.localMusic
       .loadLibrary()
@@ -49,6 +102,7 @@ function App() {
     onCleanup(() => {
       stopLibrary()
       stopScans()
+      document.removeEventListener('keydown', onKeyDown)
     })
   })
 
@@ -81,79 +135,131 @@ function App() {
   }
 
   return (
-    <div class="flex h-full flex-col font-ui">
-      <header class="flex flex-none items-center justify-between gap-6 border-b border-line px-6 py-4">
-        <div class="flex items-center gap-3">
-          <img class="size-10 rounded-lg" src="app-icon.svg" alt="" />
-          <div class="flex min-w-0 flex-col">
-            <strong class="text-[15px] font-semibold">local-music</strong>
-            <span class="mt-[3px] text-[13px] text-subtle">Your records, your way</span>
-          </div>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand" aria-label="local-music">
+          <span class="brand-mark" aria-hidden="true" />
+          <strong>local-music</strong>
         </div>
+        <nav class="lenses" aria-label="Library views">
+          <button type="button" aria-current={view() === 'home'} onClick={() => setView('home')}>
+            Library <kbd>1</kbd>
+          </button>
+          <button
+            type="button"
+            aria-current={view() === 'tracks'}
+            onClick={() => setView('tracks')}
+          >
+            Tracks <kbd>2</kbd>
+          </button>
+        </nav>
+        <label class="global-search" for="search">
+          <span aria-hidden="true">⌕</span>
+          <input
+            ref={(element) => {
+              searchInput = element
+            }}
+            id="search"
+            type="search"
+            placeholder="Search tracks, albums, artists or paths"
+            value={query()}
+            onInput={(event) => setQuery(event.currentTarget.value)}
+          />
+          <kbd>⌘K</kbd>
+        </label>
         <button
-          class="cursor-default rounded-[7px] border border-line px-3 py-[7px] text-ink hover:bg-soft focus-visible:outline-2 focus-visible:outline-copper disabled:opacity-55"
+          class="add-folder"
           type="button"
           onClick={() => void chooseFolder()}
           disabled={busy()}
         >
-          Add folder
+          <span aria-hidden="true">＋</span> Add folder
         </button>
       </header>
-      <main class="mx-auto flex min-h-0 w-full max-w-[1280px] flex-1 flex-col gap-[18px] p-6">
-        <div>
-          <h1 class="mb-[5px] text-[21px] font-bold tracking-[-0.025em]">Library</h1>
-          <Show when={library()?.sources.length}>
-            <div class="flex flex-wrap gap-2">
+
+      <main class="library-main">
+        <div class="library-heading">
+          <div>
+            <span class="eyebrow">Your collection</span>
+            <h1>
+              {query() ? `Results for “${query()}”` : view() === 'home' ? 'Library' : 'All tracks'}
+            </h1>
+          </div>
+          <p role="status" classList={{ error: Boolean(error()) }}>
+            {error() ??
+              (busy() || scanning().length
+                ? 'Scanning music…'
+                : library()
+                  ? 'Indexed and ready to play'
+                  : 'Loading your library…')}
+          </p>
+        </div>
+
+        <Show when={library()}>
+          <div class="library-stats" aria-label="Library summary">
+            <span>
+              <strong>{library()?.tracks.length}</strong> tracks
+            </span>
+            <span>
+              <strong>{albums()}</strong> albums
+            </span>
+            <span>
+              <strong>{artists()}</strong> artists
+            </span>
+            <span>
+              <strong>{library()?.sources.length}</strong> folders
+            </span>
+            <div class="source-actions">
               <For each={library()?.sources}>
                 {(source) => (
                   <button
-                    class="max-w-full cursor-default truncate rounded-[7px] border border-line px-2 py-1 text-[13px] text-subtle hover:bg-soft disabled:opacity-55"
                     type="button"
                     title={`Rescan ${source.rootPath}`}
                     disabled={scanning().includes(source.id)}
                     onClick={() => void rescan(source.id)}
                   >
-                    {source.rootPath} ↻
+                    {scanning().includes(source.id) ? 'Scanning…' : 'Rescan'}
                   </button>
                 )}
               </For>
             </div>
-          </Show>
-        </div>
-        <p class="text-[13px] text-subtle" role="status">
-          {error() ??
-            (busy() || scanning().length
-              ? 'Scanning music…'
-              : library()
-                ? `${library()?.tracks.length} tracks indexed across ${library()?.sources.length} folders`
-                : 'Loading your library…')}
-        </p>
-        <label class="sr-only" for="search">
-          Search your library
-        </label>
-        <input
-          class="w-full rounded-[7px] border border-line bg-panel px-3 py-[9px] text-ink placeholder:text-subtle focus-visible:outline-2 focus-visible:outline-copper"
-          id="search"
-          type="search"
-          placeholder="Search tracks, artists, albums, or paths"
-          value={query()}
-          onInput={(event) => setQuery(event.currentTarget.value)}
-        />
-        <Show when={library()}>{(snapshot) => <Albums tracks={snapshot().tracks} />}</Show>
-        <section class="flex min-h-0 flex-1 flex-col gap-3" aria-labelledby="tracks-title">
-          <div class="flex items-center justify-between gap-4">
-            <h2 class="text-[15px] font-semibold" id="tracks-title">
-              Tracks
-            </h2>
-            <span class="text-[13px] text-subtle">
+          </div>
+        </Show>
+
+        <Show when={!query() && view() === 'home' && library()}>
+          {(snapshot) => <Albums tracks={snapshot().tracks} onPlay={play} />}
+        </Show>
+
+        <section
+          class={`tracks-section ${!query() && view() === 'home' ? 'with-albums' : ''}`}
+          aria-labelledby="tracks-title"
+        >
+          <div class="section-heading">
+            <h2 id="tracks-title">{query() ? 'Matching tracks' : 'Tracks'}</h2>
+            <span>
               {filtered().length > 500
-                ? `${filtered().length} matching · showing first 500`
-                : `${filtered().length} matching tracks`}
+                ? `${filtered().length} found · showing 500`
+                : `${filtered().length} ${filtered().length === 1 ? 'track' : 'tracks'}`}
             </span>
           </div>
-          <TrackList tracks={filtered()} />
+          <TrackList
+            tracks={filtered()}
+            currentTrackId={currentTrack()?.id ?? null}
+            playing={playing()}
+            onPlay={play}
+          />
         </section>
       </main>
+
+      <Player
+        track={currentTrack()}
+        hasPrevious={currentIndex() > 0}
+        hasNext={currentIndex() >= 0 && currentIndex() < playable().length - 1}
+        onPrevious={() => playAt(currentIndex() - 1)}
+        onNext={() => playAt(currentIndex() + 1)}
+        onPlayingChange={setPlaying}
+        onError={setError}
+      />
       <Show when={window.localMusic.isDevelopment}>
         <FPSMeter />
       </Show>

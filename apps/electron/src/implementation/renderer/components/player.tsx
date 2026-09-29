@@ -1,0 +1,151 @@
+import { Show, createEffect, createSignal } from 'solid-js'
+
+import type { LibraryTrack } from '@/contracts/library'
+import { Cover } from '@/implementation/renderer/components/cover'
+
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds)) return '0:00'
+
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
+}
+
+/** Plays indexed tracks and renders the persistent transport controls. */
+export function Player(props: {
+  track: LibraryTrack | null
+  hasPrevious: boolean
+  hasNext: boolean
+  onPrevious: () => void
+  onNext: () => void
+  onPlayingChange: (playing: boolean) => void
+  onError: (message: string) => void
+}) {
+  let audio: HTMLAudioElement | undefined
+  const [playing, setPlaying] = createSignal(false)
+  const [position, setPosition] = createSignal(0)
+  const [duration, setDuration] = createSignal(0)
+
+  createEffect(() => {
+    const track = props.track
+
+    if (!audio || !track) return
+
+    audio.src = `local-music-audio://track/${track.id}`
+    audio.load()
+    setPosition(0)
+    setDuration(track.durationSeconds)
+    void audio.play().catch(() => props.onError(`Could not play “${track.title}”.`))
+  })
+
+  const setPlayback = (next: boolean) => {
+    setPlaying(next)
+    props.onPlayingChange(next)
+  }
+
+  const toggle = () => {
+    if (!audio || !props.track) return
+
+    if (audio.paused) void audio.play()
+    else audio.pause()
+  }
+
+  const seek = (value: string) => {
+    if (!audio) return
+    const next = Number(value)
+    audio.currentTime = next
+    setPosition(next)
+  }
+
+  return (
+    <footer class="player" aria-label="Now playing">
+      <audio
+        ref={(element) => {
+          audio = element
+        }}
+        onPlay={() => setPlayback(true)}
+        onPause={() => setPlayback(false)}
+        onTimeUpdate={(event) => setPosition(event.currentTarget.currentTime)}
+        onDurationChange={(event) => setDuration(event.currentTarget.duration)}
+        onEnded={props.onNext}
+        onError={() => {
+          setPlayback(false)
+
+          if (props.track) props.onError(`Could not play “${props.track.title}”.`)
+        }}
+      />
+      <Show
+        when={props.track}
+        fallback={
+          <div class="player-empty">
+            <span class="player-placeholder" aria-hidden="true">
+              ♪
+            </span>
+            <span>
+              <strong>Nothing playing</strong>
+              <small>Choose a track to begin</small>
+            </span>
+          </div>
+        }
+      >
+        {(track) => (
+          <>
+            <div class="now-playing">
+              <Cover trackId={track().id} artworkId={track().artworkId} size="small" />
+              <span>
+                <strong>{track().title}</strong>
+                <small>
+                  {track().artist} · {track().album}
+                </small>
+              </span>
+            </div>
+            <div class="transport">
+              <div class="transport-buttons">
+                <button
+                  type="button"
+                  aria-label="Previous track"
+                  disabled={!props.hasPrevious}
+                  onClick={props.onPrevious}
+                >
+                  ◀
+                </button>
+                <button
+                  class="play-toggle"
+                  type="button"
+                  onClick={toggle}
+                  aria-label="Play or pause"
+                >
+                  {playing() ? 'Ⅱ' : '▶'}
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next track"
+                  disabled={!props.hasNext}
+                  onClick={props.onNext}
+                >
+                  ▶
+                </button>
+              </div>
+              <div class="timeline">
+                <time>{formatTime(position())}</time>
+                <input
+                  type="range"
+                  min="0"
+                  max={Math.max(duration(), 1)}
+                  step="0.1"
+                  value={position()}
+                  aria-label="Playback position"
+                  style={{ '--progress': `${(position() / Math.max(duration(), 1)) * 100}%` }}
+                  onInput={(event) => seek(event.currentTarget.value)}
+                />
+                <time>{formatTime(duration())}</time>
+              </div>
+            </div>
+            <div class="player-context">
+              <span>Playing from</span>
+              <strong>{track().album}</strong>
+            </div>
+          </>
+        )}
+      </Show>
+    </footer>
+  )
+}
