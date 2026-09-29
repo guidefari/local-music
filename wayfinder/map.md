@@ -7,7 +7,7 @@ status: open
 
 ## Destination
 
-An implementable, macOS-first MVP spec for a GPUI Kit desktop app that manages local music files and playlists. It should settle the first user journey, file and metadata ownership, playlist model, safe file operations, basic playback, and a feasible technical shape. It should leave clear seams for later Apple Music and Spotify imports and Rekordbox preparation without building those integrations now.
+An implementable, macOS-first MVP spec for an Electron desktop app that manages local music files and playlists. It should settle the first user journey, file and metadata ownership, playlist model, safe file operations, basic playback, and a feasible technical shape. It should leave clear seams for later Apple Music and Spotify imports and Rekordbox preparation without building those integrations now.
 
 ## Notes
 
@@ -16,7 +16,7 @@ An implementable, macOS-first MVP spec for a GPUI Kit desktop app that manages l
 - Work one decision ticket per session. Claim an unblocked, unassigned ticket before working on it. Use `/grilling` for product decisions and `/prototype` when a concrete artifact would clarify behavior.
 - Local audio files are the starting point. The user wants both playlist curation and library organization, including eventual moves and renames. Basic preview playback is in scope, not a full player.
 - Do not change, tag, move, or delete real music files while planning. File operations need an explicit safety decision before implementation.
-- GPUI Kit is the intended Rust UI framework; this repo is not a Tauri app.
+- The initial GPUI Kit frontend was retired. Electron with Solid and Effect is the only desktop UI; Rust is reserved for tactical work such as the read-only scanner in `crates/scanner`.
 
 ## Decisions so far
 
@@ -27,7 +27,7 @@ An implementable, macOS-first MVP spec for a GPUI Kit desktop app that manages l
 - Exact metadata editing and cleanup flows, including how tags in audio files relate to app-only metadata.
 - Scan, rescan, missing-file, duplicate, and moved-file behavior once file identity is settled.
 - Import/export fidelity and playlist paths for eventual Spotify, Apple Music, and Rekordbox use.
-- Playback backend and GPUI Kit integration once the core workflow is clear.
+- Playback backend and Electron integration once the core workflow is clear.
 - Test fixtures and acceptance criteria for the chosen MVP journey.
 
 ## Out of scope

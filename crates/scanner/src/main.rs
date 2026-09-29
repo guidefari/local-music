@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, path::PathBuf, process::ExitCode};
 
 use base64::{Engine, engine::general_purpose::STANDARD};
-use local_music::library::scan_folder;
+use local_music_scanner::scan_folder;
 use serde_json::json;
 
 fn main() -> ExitCode {
@@ -21,11 +21,11 @@ fn main() -> ExitCode {
         .into_iter()
         .map(|track| {
             let cover_id = track.cover.map(|image| {
-                let id = image.id().to_string();
+                let id = image.id.to_string();
                 covers.entry(id.clone()).or_insert_with(|| {
                     format!(
                         "data:{};base64,{}",
-                        image.format.mime_type(),
+                        image.mime_type,
                         STANDARD.encode(&image.bytes)
                     )
                 });

@@ -4,9 +4,8 @@
   "packageManager": "bun@1.4.0",
   "workspaces": ["apps/electron"],
   "scripts": {
-    "dev:rust": "cargo run -p local-music",
-    "dev:electron": "cargo build --bin local-music-scan && bun run --cwd apps/electron dev",
+    "dev:electron": "cargo build -p local-music-scanner --bin local-music-scan && bun run --cwd apps/electron dev",
     "check:electron": "bun run --cwd apps/electron check",
-    "test:electron": "cargo build --bin local-music-scan && bun run --cwd apps/electron test"
+    "test:electron": "cargo build -p local-music-scanner --bin local-music-scan && bun run --cwd apps/electron test"
   }
 }

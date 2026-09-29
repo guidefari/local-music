@@ -5,7 +5,6 @@ use std::{
     sync::Arc,
 };
 
-use gpui_kit::{Image, ImageFormat};
 use lofty::{
     file::{AudioFile, TaggedFileExt},
     picture::PictureType,
@@ -22,18 +21,14 @@ pub struct Track {
     pub artist: String,
     pub album: String,
     pub duration_seconds: u64,
-    pub cover: Option<Arc<Image>>,
+    pub cover: Option<Arc<Artwork>>,
 }
 
-impl Track {
-    pub fn matches(&self, query: &str) -> bool {
-        let query = query.trim().to_lowercase();
-        query.is_empty()
-            || self.title.to_lowercase().contains(&query)
-            || self.artist.to_lowercase().contains(&query)
-            || self.album.to_lowercase().contains(&query)
-            || self.path.to_string_lossy().to_lowercase().contains(&query)
-    }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Artwork {
+    pub id: u64,
+    pub mime_type: &'static str,
+    pub bytes: Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -103,7 +98,7 @@ pub fn scan_folder(folder: &Path) -> ScanResult {
     ScanResult { tracks, skipped }
 }
 
-fn cover_image(tag: &Tag, cache: &mut HashMap<u64, Arc<Image>>) -> Option<Arc<Image>> {
+fn cover_image(tag: &Tag, cache: &mut HashMap<u64, Arc<Artwork>>) -> Option<Arc<Artwork>> {
     let picture = tag
         .pictures()
         .iter()
@@ -113,7 +108,18 @@ fn cover_image(tag: &Tag, cache: &mut HashMap<u64, Arc<Image>>) -> Option<Arc<Im
     if data.len() > 8 * 1024 * 1024 {
         return None;
     }
-    let format = ImageFormat::from_mime_type(picture.mime_type()?.as_str())?;
+    let mime_type = match picture.mime_type()?.as_str() {
+        "image/png" => "image/png",
+        "image/jpeg" | "image/jpg" => "image/jpeg",
+        "image/webp" => "image/webp",
+        "image/gif" => "image/gif",
+        "image/svg+xml" => "image/svg+xml",
+        "image/bmp" => "image/bmp",
+        "image/tiff" | "image/tif" => "image/tiff",
+        "image/ico" => "image/ico",
+        "image/x-portable-anymap" => "image/x-portable-anymap",
+        _ => return None,
+    };
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     data.hash(&mut hasher);
     let id = hasher.finish();
@@ -122,7 +128,11 @@ fn cover_image(tag: &Tag, cache: &mut HashMap<u64, Arc<Image>>) -> Option<Arc<Im
     {
         return Some(image.clone());
     }
-    let image = Arc::new(Image::from_bytes(format, data.to_vec()));
+    let image = Arc::new(Artwork {
+        id,
+        mime_type,
+        bytes: data.to_vec(),
+    });
     cache.insert(id, image.clone());
     Some(image)
 }
@@ -145,23 +155,6 @@ mod tests {
         picture::{MimeType, Picture},
         tag::TagType,
     };
-
-    #[test]
-    fn search_includes_metadata_and_file_path() {
-        let track = Track {
-            path: PathBuf::from("/Music/House/Example.flac"),
-            title: "Example".to_owned(),
-            artist: "Artist".to_owned(),
-            album: "Record".to_owned(),
-            duration_seconds: 100,
-            cover: None,
-        };
-
-        for query in ["example", "ARTIST", "record", "house", " "] {
-            assert!(track.matches(query));
-        }
-        assert!(!track.matches("jazz"));
-    }
 
     #[test]
     fn audio_extensions_are_case_insensitive() {
@@ -189,7 +182,7 @@ mod tests {
         let mut cache = HashMap::new();
         let first = cover_image(&tag, &mut cache).expect("front cover is available");
         let second = cover_image(&tag, &mut cache).expect("front cover is cached");
-        assert_eq!(first.format, ImageFormat::Jpeg);
+        assert_eq!(first.mime_type, "image/jpeg");
         assert!(Arc::ptr_eq(&first, &second));
     }
 }
