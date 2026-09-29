@@ -16,7 +16,7 @@ Commit each source separately rather than requiring all sources to finish before
 
 | Option | Benefit | Cost |
 | --- | --- | --- |
-| Read from original files on demand | No copied image bytes, simple storage, fresh cover when tags change | Missing/unreadable files have no cover; may require another read. Preferred if this is acceptable. |
-| Bounded app-owned cache | Cover survives missing files and loads quickly | Copies artwork; needs a size limit and eviction rule. Needed if retained covers remain a requirement. |
+| Read from original files on demand | No copied image bytes, simple storage, fresh cover when tags change | Missing/unreadable files have no cover; rejected for this slice. |
+| Bounded app-owned cache | Known tracks keep cached covers when files disappear; duplicate covers share one file | Copies artwork; requires admission, size cap, and orphan cleanup. **Chosen.** |
 
-Do not create an artwork table or cache until this product choice is confirmed. The core source/track identity model does not depend on it.
+Store cached images as content-addressed files under app userData, not as unbounded SQLite blobs. Store only the digest and MIME reference in a track row after schema approval. Proposed cap: 512 MiB total, 8 MiB per image. Existing committed references are pinned; new artwork is not cached if the cap cannot admit it. This favors retaining old covers over promising unlimited new ones.

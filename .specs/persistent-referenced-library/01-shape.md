@@ -4,7 +4,8 @@
 
 ```text
 library_source (one selected folder, unique normalized absolute root)
-  └── track (app ID, relative path, last good metadata, present/missing, last seen time)
+  └── track (app ID, relative path, last good metadata, cover ID, present/missing, last seen time)
+artwork cache (content-addressed image files under app userData, not the music folder)
 ```
 
 Track IDs are stable by `(sourceId, relativePath)`, not inferred from tags. A file moved to a new path becomes a new track until move reconciliation is designed. Overlapping roots can show the same physical file twice. A new unreadable file yields a diagnostic rather than an invented track; a known unreadable file retains its metadata and stays present.
@@ -31,9 +32,11 @@ Effect `PersistedQueue` from the linked article is designed for acknowledged bac
 5. If enumeration completes, reconcile that source in one transaction: update seen tracks, preserve unreadable known tracks, mark absent paths from this source missing, advance that source's timestamp.
 6. If enumeration fails or scan is interrupted, drop that source's staging and retain its previous snapshot. Other sources remain untouched.
 
-## Artwork decision
+## Artwork cache
 
-The current browser receives embedded covers as data URLs from the in-memory scan. For persistence, prefer reading covers from **present files on demand**, with no image bytes in the initial schema. This makes missing/unreadable covers unavailable. If retaining those covers matters, use a bounded content-addressed app cache with an explicit eviction policy, not an unbounded SQLite blob table. This decision is open and does not block the scanner and source-model work.
+The user chose a bounded copy so covers can remain visible when source files go missing. During a successful metadata read, hash the MIME type and image bytes, then atomically cache supported images under `userData/artwork/<digest>` with a proposed **512 MiB total cap and 8 MiB per-image cap**. The track row stores the cached digest and MIME type, not image bytes. Multiple tracks with the same cover share a file. A known unreadable/missing track keeps its last cached cover reference; the renderer loads visible covers through fixed, validated IPC.
+
+Never evict a cover referenced by a committed track, including a missing one. Reclaim unreferenced files after a successful source commit or on startup. If the cap is full of referenced images, do not evict them: skip caching a new cover, report the cache miss, and show that new cover directly from its present file for this session. If that uncached file later disappears, its cover cannot be retained. This is an explicit best-effort bound, not an impossible promise to store unlimited artwork under a fixed cap. Artwork file creation before DB commit can leave an orphan after a failed scan; startup cleanup may remove only unreferenced files. No SQLite artwork blob table is needed.
 
 ## Risks
 

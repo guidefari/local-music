@@ -17,7 +17,7 @@ UI Add folder -> native dialog -> canonicalize chosen root in main
 -> register/reuse source by unique root -> show snapshot
 -> queue scan(sourceId) for only the selected source
 -> Effect Stream walks that folder recursively, not other roots
--> bounded metadata reads -> stage observed/unreadable paths
+-> bounded metadata reads -> cache admissible cover bytes under userData -> stage observed/unreadable paths and cached artwork references
 -> complete traversal -> transaction reconciles only sourceId -> emit updated snapshot
 ```
 
@@ -29,4 +29,4 @@ The scanner's async directory iterator errors on an unreadable directory rather 
 
 ## Artwork and search
 
-Current POC reads embedded cover data during a scan and sends data URLs in the in-memory snapshot. Persistence will not automatically store those bytes. If on-demand original-file reading is accepted, read only covers needed by the visible view through fixed IPC, with validated IDs and bounded size; missing files use a fallback. If retained covers are required, add a separate bounded app-owned cache after approval. Search/grouping remain renderer Effect projections over saved metadata, while Solid owns display signals.
+Current POC reads embedded cover data during a scan and sends data URLs in the in-memory snapshot. At persistence cutover, cache supported covers as content-addressed files under userData, with an 8 MiB per-image and proposed 512 MiB total cap. A complete source commit stores only artwork IDs/MIME types and `hasEmbeddedArtwork` in track rows. IPC loads a visible track's cached cover by validated track ID, so known missing tracks retain their cover. Do not evict an image referenced by any committed track. After commit or restart, prune unreferenced cache files; a failed scan may leave an orphan but never a partially written cover. If the cap is full of pinned covers, skip caching a new cover and report the miss; a present track can still load it read-only from the original file, but it is not guaranteed after that file disappears. Search/grouping remain renderer Effect projections over saved metadata, while Solid owns display signals.

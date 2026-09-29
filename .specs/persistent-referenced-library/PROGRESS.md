@@ -26,3 +26,4 @@
 - 2026-09-29 - Opened the complete draft folder in Plannotator for review; schema implementation still requires explicit approval
 - 2026-09-29 - Incorporated review: add-folder scans only its source; replaced Rust/MessagePack plan with Electron Effect Stream; deferred artwork storage and PersistedQueue
 - 2026-09-29 - Began read-only in-process scanner cutover; database schema remains unapproved and uncreated
+- 2026-09-29 - User chose a bounded app-owned artwork copy; specified content-addressed userData cache and pinned-reference admission policy

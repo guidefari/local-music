@@ -25,7 +25,7 @@ The app forgets every import when it closes. Paths are not stable app identities
 - Scan only the chosen source when adding or manually rescanning a folder.
 - Commit each source's complete pass atomically; failure leaves that source's last snapshot intact and never changes another source.
 - Use Effect for main and renderer workflows, Effect Stream for incremental scanning, Drizzle for approved SQLite schema/queries, and Bun for scripts.
-- Preserve current search, album layout, theme, FPS readout, and embedded covers for present files.
+- Preserve current search, album layout, theme, FPS readout, and cached embedded covers for known tracks whose source files go missing.
 
 ## Non-Goals
 
@@ -41,9 +41,8 @@ The app forgets every import when it closes. Paths are not stable app identities
 - A source-relative path is not an app track ID. An unchanged path retains its track ID across successful rescans.
 - UI receives validated projections, not database rows or a database handle.
 - No database schema, migration, or real userData database is created without specific approval of fields and constraints.
-- Artwork policy is unresolved: reading from present files on demand avoids duplicate storage but cannot display covers for missing files. Prior discussion requested retained artwork; confirm that requirement before implementing artwork persistence.
+- Artwork is a bounded app-owned cache under Electron userData, never a write to music files. The user chose a bounded copy so known missing tracks can retain their covers. Cache capacity cannot guarantee admission of every future cover; an over-capacity cover remains readable from its present source but may disappear if that source later goes missing.
 
 ## Open Questions
 
-- Is artwork for missing/unreadable files worth an app-owned, bounded cache, or may those covers disappear until the file returns?
 - Which Node/Electron-compatible SQLite driver works with Drizzle in this runtime? Prove it against a throwaway database before touching userData.

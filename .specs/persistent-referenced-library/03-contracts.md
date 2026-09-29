@@ -25,6 +25,9 @@ interface LibraryTrack {
   readonly artist: string
   readonly album: string
   readonly durationSeconds: number // finite, nonnegative integer
+  readonly hasEmbeddedArtwork: boolean // permits live fallback when a cover was not cached
+  readonly artworkId: string | null // validated content digest, only if admitted to cache
+  readonly artworkMimeType: string | null // paired with artworkId
   readonly presence: 'present' | 'missing'
   readonly lastSeenAt: number
 }
@@ -41,7 +44,7 @@ interface LibrarySnapshot {
 }
 ```
 
-The Drizzle proposal has `library_source(id, root_path UNIQUE, added_at, last_successful_scan_at)`, `track(id, source_id REFERENCES library_source, relative_path, observed_title, observed_artist, observed_album, duration_seconds, presence, last_seen_at, UNIQUE(source_id, relative_path))`, and disposable `scan_stage_path(scan_id, source_id, relative_path, read_state, observed_title?, observed_artist?, observed_album?, duration_seconds?, PRIMARY KEY(scan_id, source_id, relative_path))`. Database names are snake_case and TypeScript properties camelCase. No `artwork` table or migration is approved. Stage `observed` requires all metadata fields; stage `unreadable` requires none. Validate that invariant at the persistence boundary and, where practical, in a DB check constraint.
+The Drizzle proposal has `library_source(id, root_path UNIQUE, added_at, last_successful_scan_at)`, `track(id, source_id REFERENCES library_source, relative_path, observed_title, observed_artist, observed_album, duration_seconds, has_embedded_artwork, artwork_id?, artwork_mime_type?, presence, last_seen_at, UNIQUE(source_id, relative_path))`, and disposable `scan_stage_path(scan_id, source_id, relative_path, read_state, observed_title?, observed_artist?, observed_album?, duration_seconds?, has_embedded_artwork?, artwork_id?, artwork_mime_type?, PRIMARY KEY(scan_id, source_id, relative_path))`. Database names are snake_case and TypeScript properties camelCase. Artwork ID and MIME must be both null or both non-null; cached artwork implies `hasEmbeddedArtwork`. No SQLite artwork blob table is proposed. Stage `observed` requires metadata fields; stage `unreadable` requires none. Validate at the persistence boundary and, where practical, with DB check constraints. No schema or migration is approved yet.
 
 An absent path becomes missing only after successful enumeration of **that source**. An unreadable known path stays present and keeps its last good metadata. A newly unreadable path creates no track row. A successful observation upserts by source/path and preserves its app ID. Source registration is unique by `realpath` of a selected root. Other sources do not change when this one commits.
 
@@ -49,7 +52,7 @@ An absent path becomes missing only after successful enumeration of **that sourc
 
 ```ts
 type ScannedPath =
-  | { readonly _tag: 'observed'; readonly relativePath: RelativePath; readonly title: string; readonly artist: string; readonly album: string; readonly durationSeconds: number }
+  | { readonly _tag: 'observed'; readonly relativePath: RelativePath; readonly title: string; readonly artist: string; readonly album: string; readonly durationSeconds: number; readonly cover: { readonly mimeType: string; readonly bytes: Uint8Array } | null }
   | { readonly _tag: 'unreadable'; readonly relativePath: RelativePath }
 
 interface SourceScanner {
@@ -65,6 +68,15 @@ interface LibraryRepository {
   discardStage(sourceId: SourceId, scanId: ScanId): Effect.Effect<void, StorageError>
 }
 
+interface ArtworkCache {
+  store(image: { readonly mimeType: string; readonly bytes: Uint8Array }): Effect.Effect<
+    { readonly _tag: 'cached'; readonly id: string } | { readonly _tag: 'full' },
+    StorageError
+  >
+  read(id: string): Effect.Effect<Uint8Array, StorageError>
+  pruneUnreferenced(referencedIds: ReadonlySet<string>): Effect.Effect<void, StorageError>
+}
+
 interface Library {
   load(): Effect.Effect<LibrarySnapshot, StorageError | InvalidStoredLibrary>
   addChosenFolder(rootPath: string): Effect.Effect<LibrarySnapshot, StorageError>
@@ -73,6 +85,8 @@ interface Library {
 ```
 
 These interfaces mark authority boundaries, not a requirement for pass-through wrappers. Use `Schema.TaggedErrorClass` for typed errors. The scanner yields paths incrementally, fails on directory traversal, and treats a metadata read failure as an `unreadable` item. Its Effect Stream is consumed with `Stream.runForEach` to stage rows, never collected in production. Use `Stream.mapEffect(..., { concurrency: 4 })` for reads and preserve ownership of cancellation. `commitSource` checks one complete source pass and executes one Drizzle transaction. On error, discard staging; on crash, clear abandoned stages at startup. Do not hold the transaction during filesystem I/O.
+
+The cache stores only validated MIME types and at most 8 MiB per image. Digest includes MIME type and bytes; write to a temporary file and atomically rename to `<digest>` so a crash never exposes half an image. Proposed total cap is 512 MiB. Serialize admission/accounting so four concurrent readers cannot overfill it. Committed track references are pinned, including missing tracks; reclaim only unreferenced files, and do so before starting a scan and after a successful commit. If the cap cannot admit a new cover, stage null artwork fields for that observation and report a cache miss. A missing/unreadable known track keeps its prior cover ID. Track updates that remove a cover make the old file eligible for later pruning. Read paths derive solely from validated digest IDs under userData, never from renderer-supplied paths. A missing/corrupt cache file is a typed fallback, not a reason to delete a track.
 
 ## IPC
 
@@ -86,13 +100,14 @@ interface LocalMusicBridge {
   loadLibrary(): Promise<LibraryReply<LibrarySnapshot>>
   chooseFolder(): Promise<LibraryReply<LibrarySnapshot>>
   rescan(sourceId: SourceId): Promise<LibraryReply<SourceScanState>>
+  getTrackArtwork(id: TrackId): Promise<LibraryReply<{ readonly mimeType: string; readonly bytes: Uint8Array }>>
   onLibraryChanged(listener: (snapshot: LibrarySnapshot) => void): () => void
   onScanState(listener: (state: SourceScanState) => void): () => void
   readonly isDevelopment: boolean
 }
 ```
 
-Preload and renderer decode replies and events; main parses the source ID and checks it belongs to a registered source. Renderer cannot supply arbitrary filesystem paths. The artwork lookup contract is deliberately deferred until its policy is settled. Existing transient `ScanResult`/`chooseFolder` semantics remain in the current POC until the persistent cutover, not alongside a second production path.
+Preload and renderer decode replies and events; main parses a track ID and resolves only its saved artwork or validated source path. Renderer cannot supply arbitrary filesystem paths. For a cached cover, main reads the digest file; if uncached and the track is present, it may reread the original file read-only. The renderer requests visible covers on demand and releases object URLs on cleanup. Existing transient `ScanResult`/`chooseFolder` semantics remain in the current POC until the persistent cutover, not alongside a second production path.
 
 ## Driver checkpoint
 
