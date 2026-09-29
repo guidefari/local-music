@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, test } from 'node:test'
@@ -12,10 +12,10 @@ import { scanFolder } from './scanner'
 const folders: string[] = []
 
 afterEach(async () => {
-  for (const folder of folders.splice(0)) await rm(folder, { recursive: true })
+  for (const folder of folders.splice(0)) await rm(folder, { recursive: true, force: true })
 })
 
-test('scanner indexes an audio file through the executable boundary', async () => {
+test('scanner indexes an audio file in place', async () => {
   const folder = await mkdtemp(join(tmpdir(), 'local-music-scan-'))
   folders.push(folder)
   const pcm = Buffer.alloc(44_100 * 2)
@@ -40,6 +40,26 @@ test('scanner indexes an audio file through the executable boundary', async () =
   assert.equal(result.tracks[0]?.title, 'Sample')
   assert.equal(result.tracks[0]?.durationSeconds, 1)
   assert.equal(result.skipped, 0)
+})
+
+test('scanner visits nested folders, counts unreadable audio, and does not follow symlinks', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'local-music-scan-'))
+  folders.push(folder)
+  await mkdir(join(folder, 'nested'))
+  await writeFile(join(folder, 'nested', 'broken.MP3'), 'not audio')
+  await symlink(join(folder, 'nested'), join(folder, 'linked'))
+
+  const result = await Effect.runPromise(scanFolder(folder))
+  assert.equal(result.tracks.length, 0)
+  assert.equal(result.skipped, 1)
+})
+
+test('scanner fails when the source cannot be traversed', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'local-music-scan-'))
+  folders.push(folder)
+  await rm(folder, { recursive: true })
+
+  await assert.rejects(Effect.runPromise(scanFolder(folder)))
 })
 
 test('scanner contract rejects malformed track data', () => {

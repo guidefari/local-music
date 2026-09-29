@@ -1,29 +1,129 @@
-import { execFile } from 'node:child_process'
-import { resolve } from 'node:path'
-import { promisify } from 'node:util'
+import { createHash } from 'node:crypto'
+import { opendir } from 'node:fs/promises'
+import { extname, join, parse } from 'node:path'
 
-import { Effect, Schema } from 'effect'
+import { Effect, Result, Schema, Stream } from 'effect'
+import { parseFile, selectCover } from 'music-metadata'
 
-import { decodeScanFrame } from './scanner-protocol'
+import type { ScanResult, Track } from '../shared/library-contract'
 
-const execFileAsync = promisify(execFile)
+const audioExtensions = new Set(['.mp3', '.m4a', '.flac', '.wav', '.aiff', '.aif', '.ogg', '.opus'])
 
-const scanner = resolve(__dirname, '../../../../target/debug/local-music-scan')
+const imageTypes = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml',
+  'image/bmp',
+  'image/tiff',
+  'image/ico',
+  'image/x-portable-anymap',
+])
+
+const imageAliases = new Map([
+  ['image/jpg', 'image/jpeg'],
+  ['image/tif', 'image/tiff'],
+])
 
 export class ScanFailed extends Schema.TaggedError<ScanFailed>()('ScanFailed', {
   message: Schema.String,
 }) {}
 
-export const scanFolder = Effect.fn('scanFolder')(function* (folder: string) {
-  const { stdout } = yield* Effect.tryPromise({
-    try: () =>
-      execFileAsync(scanner, [folder], {
-        encoding: 'buffer',
-        timeout: 30_000,
-        maxBuffer: 64 * 1024 * 1024,
-      }),
-    catch: () => new ScanFailed({ message: 'The local music scanner could not read this folder.' }),
+async function* audioFiles(root: string): AsyncGenerator<string> {
+  const directories = [root]
+
+  while (directories.length > 0) {
+    const directory = directories.pop()
+
+    if (directory === undefined) break
+
+    for await (const entry of await opendir(directory)) {
+      const path = join(directory, entry.name)
+
+      if (entry.isDirectory()) directories.push(path)
+      else if (entry.isFile() && audioExtensions.has(extname(entry.name).toLowerCase())) yield path
+    }
+  }
+}
+
+const readTrack = Effect.fn('Scanner.readTrack')(function* (path: string) {
+  const metadata = yield* Effect.tryPromise({
+    try: () => parseFile(path),
+    catch: () => new ScanFailed({ message: 'The audio file could not be read.' }),
   })
 
-  return yield* decodeScanFrame(stdout)
+  if (metadata.format.hasAudio === false) {
+    return yield* new ScanFailed({ message: 'The audio file has no readable audio stream.' })
+  }
+
+  const picture = selectCover(metadata.common.picture)
+  const mimeType = picture ? (imageAliases.get(picture.format) ?? picture.format) : null
+
+  const cover =
+    picture && mimeType && picture.data.length <= 8 * 1024 * 1024 && imageTypes.has(mimeType)
+      ? { picture, mimeType }
+      : null
+
+  const coverId = cover
+    ? createHash('sha256').update(cover.mimeType).update(cover.picture.data).digest('hex')
+    : null
+
+  const seconds = metadata.format.duration ?? 0
+
+  const track: Track = {
+    path,
+    title: metadata.common.title ?? parse(path).name,
+    artist: metadata.common.artist ?? 'Unknown artist',
+    album: metadata.common.album ?? 'Unknown album',
+    durationSeconds: Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds) : 0,
+    coverId,
+  }
+
+  return {
+    track,
+    cover:
+      cover && coverId
+        ? {
+            id: coverId,
+            source: `data:${cover.mimeType};base64,${Buffer.from(cover.picture.data).toString('base64')}`,
+          }
+        : null,
+  }
+})
+
+export const scanFolder = Effect.fn('Scanner.scanFolder')(function* (folder: string) {
+  const tracks: Track[] = []
+  const covers: Record<string, string> = {}
+  let skipped = 0
+
+  yield* Stream.fromAsyncIterable(
+    audioFiles(folder),
+    () => new ScanFailed({ message: 'The music folder could not be fully traversed.' }),
+  ).pipe(
+    Stream.mapEffect((path) => readTrack(path).pipe(Effect.result), { concurrency: 4 }),
+    Stream.runForEach((result) =>
+      Effect.sync(() =>
+        Result.match(result, {
+          onFailure: () => {
+            skipped += 1
+          },
+          onSuccess: ({ track, cover }) => {
+            tracks.push(track)
+
+            if (cover) covers[cover.id] = cover.source
+          },
+        }),
+      ),
+    ),
+  )
+
+  tracks.sort(
+    (a, b) =>
+      a.artist.localeCompare(b.artist) ||
+      a.album.localeCompare(b.album) ||
+      a.title.localeCompare(b.title),
+  )
+
+  return { tracks, covers, skipped } satisfies ScanResult
 })

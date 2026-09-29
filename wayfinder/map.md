@@ -16,7 +16,7 @@ An implementable, macOS-first MVP spec for an Electron desktop app that manages 
 - Work one decision ticket per session. Claim an unblocked, unassigned ticket before working on it. Use `/grilling` for product decisions and `/prototype` when a concrete artifact would clarify behavior.
 - Local audio files are the starting point. The user wants both playlist curation and library organization, including eventual moves and renames. Basic preview playback is in scope, not a full player.
 - Do not change, tag, move, or delete real music files while planning. File operations need an explicit safety decision before implementation.
-- The initial GPUI Kit frontend was retired. Electron with Solid and Effect is the only desktop UI; Rust is reserved for tactical work such as the read-only scanner in `crates/scanner`.
+- The initial GPUI Kit frontend was retired. Electron with Solid and Effect is the only desktop UI; the read-only scanner now uses Effect Stream in Electron main instead of Rust.
 
 ## Decisions so far
 

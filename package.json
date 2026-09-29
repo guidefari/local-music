@@ -4,9 +4,9 @@
   "packageManager": "bun@1.4.0",
   "workspaces": ["apps/electron"],
   "scripts": {
-    "dev:electron": "cargo build -p local-music-scanner --bin local-music-scan && bun run --cwd apps/electron dev",
+    "dev:electron": "bun run --cwd apps/electron dev",
     "check:electron": "bun run --cwd apps/electron check",
-    "test:electron": "cargo build -p local-music-scanner --bin local-music-scan && bun run --cwd apps/electron test",
+    "test:electron": "bun run --cwd apps/electron test",
     "lint": "oxlint apps/electron/src apps/electron/vite.config.mjs",
     "lint:fix": "oxlint --fix apps/electron/src apps/electron/vite.config.mjs",
     "format": "oxfmt apps/electron/src apps/electron/vite.config.mjs",
