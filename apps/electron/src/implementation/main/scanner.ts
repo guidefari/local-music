@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto'
 import { opendir } from 'node:fs/promises'
-import { extname, join, parse } from 'node:path'
+import { extname, join, parse, relative } from 'node:path'
 
 import { Effect, Result, Schema, Stream } from 'effect'
 import { parseFile, selectCover } from 'music-metadata'
 
-import type { ScanResult, Track } from '../../contracts/library'
+import { LibraryFailure, SourceScanner, type ScanResult, type Track } from '../../contracts/library'
 
 const audioExtensions = new Set(['.mp3', '.m4a', '.flac', '.wav', '.aiff', '.aif', '.ogg', '.opus'])
 
@@ -86,7 +86,8 @@ const readTrack = Effect.fn('Scanner.readTrack')(function* (path: string) {
       cover && coverId
         ? {
             id: coverId,
-            source: `data:${cover.mimeType};base64,${Buffer.from(cover.picture.data).toString('base64')}`,
+            mimeType: cover.mimeType,
+            bytes: cover.picture.data,
           }
         : null,
   }
@@ -122,7 +123,9 @@ export const scanFolder = Effect.fn('Scanner.scanFolder')(function* (folder: str
           onSuccess: ({ track, cover }) => {
             tracks.push(track)
 
-            if (cover) covers[cover.id] = cover.source
+            if (cover)
+              covers[cover.id] =
+                `data:${cover.mimeType};base64,${Buffer.from(cover.bytes).toString('base64')}`
           },
         }),
       ),
@@ -137,4 +140,29 @@ export const scanFolder = Effect.fn('Scanner.scanFolder')(function* (folder: str
   )
 
   return { tracks, covers, skipped } satisfies ScanResult
+})
+
+export const sourceScanner = SourceScanner.of({
+  scan: (root) =>
+    scanFolderStream(root).pipe(
+      Stream.map(({ path, result }) =>
+        Result.match(result, {
+          onFailure: () => ({ kind: 'unreadable' as const, path: relative(root, path) }),
+          onSuccess: ({ track, cover }) => ({
+            kind: 'observed' as const,
+            observation: {
+              path: relative(root, path),
+              title: track.title,
+              artist: track.artist,
+              album: track.album,
+              durationSeconds: track.durationSeconds,
+              cover: cover ? { mimeType: cover.mimeType, bytes: cover.bytes } : null,
+            },
+          }),
+        }),
+      ),
+      Stream.mapError(
+        () => new LibraryFailure({ message: 'The music folder could not be fully traversed.' }),
+      ),
+    ),
 })
