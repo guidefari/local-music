@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, test } from 'node:test'
@@ -28,6 +28,7 @@ test('retains saved metadata and cached artwork when a later traversal fails or 
   directories.push(directory)
   const sourcePath = join(directory, 'music')
   await mkdir(sourcePath)
+  const canonicalSourcePath = await realpath(sourcePath)
   const database = await openLibraryDatabase(join(directory, 'library.db'), migrations)
   const store = makeLibraryStore(database.db)
   const cache = await Effect.runPromise(makeArtworkCache(join(directory, 'artwork')))
@@ -60,7 +61,10 @@ test('retains saved metadata and cached artwork when a later traversal fails or 
   const id = first.tracks[0]?.id
 
   assert.ok(id)
-  assert.equal(await Effect.runPromise(library.audioPath(id)), join(sourcePath, 'song.mp3'))
+  assert.equal(
+    await Effect.runPromise(library.audioPath(id)),
+    join(canonicalSourcePath, 'song.mp3'),
+  )
   assert.deepEqual((await Effect.runPromise(library.artwork(id))).bytes, cover.bytes)
 
   let requestedAudioPath = ''
@@ -84,7 +88,7 @@ test('retains saved metadata and cached artwork when a later traversal fails or 
 
   assert.equal(audio.status, 206)
   assert.equal(audio.headers.get('Requested-Range'), 'bytes=4-8')
-  assert.equal(requestedAudioPath, join(sourcePath, 'song.mp3'))
+  assert.equal(requestedAudioPath, join(canonicalSourcePath, 'song.mp3'))
 
   const rejectedAudio = await serveAudio(
     library,
