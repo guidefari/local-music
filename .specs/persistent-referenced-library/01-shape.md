@@ -1,85 +1,43 @@
 # Shape: Persistent Referenced Library
 
-## Key Domain Concepts
+## Domain model
 
 ```text
-Library
-  ├─ Registered source: a folder the user chose, not a copy of its contents
-  │    └─ Observed tracks: stable app ID + current file path + last observed metadata
-  └─ Artwork: deduplicated embedded image, referenced by observed tracks and loaded on demand
+library_source (one selected folder, unique normalized absolute root)
+  └── track (app ID, relative path, last good metadata, present/missing, last seen time)
 ```
 
-An **import** registers a source and reconciles one scanner result into durable observations. A **track ID** is assigned by the app when a file path is first observed; rescanning the same path in that source preserves the ID. A path that vanishes remains a missing track. Detecting whether a file at another path is the same track is deliberately postponed.
+Track IDs are stable by `(sourceId, relativePath)`, not inferred from tags. A file moved to a new path becomes a new track until move reconciliation is designed. Overlapping roots can show the same physical file twice. A new unreadable file yields a diagnostic rather than an invented track; a known unreadable file retains its metadata and stays present.
 
-The library supports several registered sources now. Choosing another folder adds it; the library view includes all registered sources and their tracks. A repeated choice of the same folder does not create a duplicate. No source-removal operation is part of this slice.
-
-## Proposed Persistent Data Model
-
-This is the **shape for review**, not an approved migration. The next contracts layer will specify exact Effect schemas, Drizzle definitions, constraints, and transitions. Database names use snake_case; TypeScript properties use camelCase.
-
-| Record | Fields | Identity and purpose |
-| --- | --- | --- |
-| `library_source` | `id`, `root_path`, `added_at`, `last_successful_scan_at` | App-assigned source ID; unique normalized absolute root path. Choosing an existing root reuses the same source. |
-| `track` | `id`, `source_id`, `relative_path`, `observed_title`, `observed_artist`, `observed_album`, `duration_seconds`, `artwork_id`, `presence`, `last_seen_at` | App-assigned stable track ID. Unique `(source_id, relative_path)` preserves identity across rescans at the same location. Embedded metadata is an observation, not an app edit. `presence` is `present` or `missing`; a missing track remains in the library. |
-| `artwork` | `id`, `mime_type`, `bytes` | Content digest ID and one stored copy of the embedded image. Many tracks may reference it; missing tracks keep their cover. |
+## Boundaries
 
 ```text
-library_source 1 ── * track * ── 0..1 artwork
-                         ↑
-               future playlist_entry.track_id
+Solid signals and components
+  -> renderer Effect workflow -> validated preload/IPC -> main Effect library workflow
+  -> Effect Stream directory walker + bounded metadata reads
+  -> disposable per-source scan stage -> Drizzle SQLite reconciliation
 ```
 
-The absolute playback path is constructed from the source root and a validated relative path. A source folder may move, but relinking it is a later behavior. A track at a new relative path is a new identity until move reconciliation is designed. `last_seen_at` is updated only when a whole-library pass commits successfully.
+The filesystem walker yields audio paths incrementally without following symlinks. `Stream.mapEffect(..., { concurrency: 4 })` bounds reads. `Stream.runForEach` stages results as they arrive; no `runCollect` for a production-sized library. Backpressure comes from consuming and staging each result, not from a persisted job queue. A traversal failure fails the source pass. A per-file metadata error stages that path as unreadable.
 
-Incremental scan results need **staging records** keyed by scan ID, separate from these committed library records. Staged paths record every enumerated audio file, including files whose metadata could not be read; successful observations separately carry metadata and artwork. A pass either reconciles all registered sources and commits a new snapshot, or discards its staging data. An unreadable known file is still present and keeps its last good metadata and cover. We will pin down staging tables, diagnostic shapes, and crash cleanup in the contracts and flows layers.
+Effect `PersistedQueue` from the linked article is designed for acknowledged background jobs with locks and retries, including multiple producers/workers. This single-process desktop app has a finite source list and can restart lazy scans from saved sources. We do **not** add PersistedQueue now: it would require another durable job lifecycle and retry policy without improving the current source-of-truth rule. Revisit only if scans must resume at file granularity across restarts or run in separate workers.
 
-There are deliberately no playlist or override tables in this slice. The stable `track.id` is the reference future `playlist_entry`, track notes, tags, and displayed-metadata overrides will use. Import never copies audio or rewrites embedded tags.
+## Flow
 
-## Boundaries and Seams
+1. On launch, open an approved SQLite database, clear incomplete staging, load saved sources/tracks, and render metadata.
+2. After first paint, queue one source scan per existing source, sequentially at low priority. These are **separate passes and commits**, not one all-library transaction.
+3. Adding a new folder registers it and queues **only that source**. A manual rescan targets exactly one selected source.
+4. Each source scan incrementally enumerates audio files, reads metadata with concurrency four, and writes staged paths and observations in bounded batches.
+5. If enumeration completes, reconcile that source in one transaction: update seen tracks, preserve unreadable known tracks, mark absent paths from this source missing, advance that source's timestamp.
+6. If enumeration fails or scan is interrupted, drop that source's staging and retain its previous snapshot. Other sources remain untouched.
 
-```text
-Solid view (signals, input, rendering)
-    ↓ invokes / displays
-Renderer Effect workflow (load, import, rescan, search projection, typed UI state)
-    ↓ typed preload interface; decode on receipt
-Electron IPC adapter
-    ↓ parses requests and projects responses
-Main Effect library module (source registration + scan reconciliation)
-    ├─ scanner adapter: Rust process -> validated observations and artwork
-    └─ persistence adapter: Drizzle + node:sqlite -> parsed library records
-```
+## Artwork decision
 
-- **Renderer seam:** Solid owns ephemeral input and render state. Effect owns async calls, expected failures, import/rescan orchestration, and library transformations. The event handler runs the Effect program and projects its result into Solid signals. No Drizzle, filesystem access, or independent library rules live in Solid components.
-- **IPC seam:** Preload exposes only library operations, not an arbitrary channel or a database connection. Incoming values are parsed on both sides of the runtime hop; transport shapes are not persisted rows.
-- **Scanner seam:** The headless Rust scanner in `crates/scanner` remains read-only and recursive, with symlinks not followed. Its current versioned MessagePack response transports artwork as bytes, but is still a single buffered snapshot with a 30-second timeout. It cannot provide bounded streaming or reliable coverage for larger libraries. The next process protocol must expose incremental observations, artwork, traversal failures, and a final completion signal; main validates each message before staging it.
-- **Persistence seam:** Main opens one SQLite database under Electron `userData`. Drizzle owns its schema, generated migrations, queries, and transactions. The library module sees parsed records through its repository capability, not Drizzle rows. The Node-compatible Drizzle driver must be smoke-tested in Electron before schema implementation.
-
-## High-Level Flow
-
-1. Launch Electron, open the main-owned database, apply approved migrations, and load the last committed library snapshot.
-2. The renderer runs an Effect load workflow and displays the snapshot immediately. After important UI loading completes, it signals readiness; main queues one low-priority rescan job. A manual Rescan request can start the same job earlier, not a second concurrent pass.
-3. The user can also choose another folder. The native picker returns a path to main; main registers the source without replacing existing sources.
-4. The scan job walks every registered source recursively and reads audio files through a bounded worker pool. It stages validated observations and artwork without replacing the committed snapshot mid-pass.
-5. A complete library pass means every registered source was fully enumerated, every queued file was accounted for, and the scanner sent its final completion signal. A metadata read error is reported for an enumerated path; a traversal failure makes the pass incomplete.
-6. On completion, a database transaction reconciles staged observations by source and path, retaining IDs, deduplicating artwork, and marking previously known but unobserved paths missing. If the pass fails or is cancelled, discard staged changes and retain the last committed snapshot.
-7. Main returns or publishes a fresh metadata-only library projection. The renderer's Effect workflow decodes it and updates Solid state. Covers are loaded by artwork ID on demand, not embedded in the whole-library reply. Search uses the loaded track metadata locally for this slice.
-
-## Key Decisions
-
-- **Reference, do not copy:** Audio files and embedded tags remain external. The app owns observations, artwork cache, and future user edits.
-- **Snapshot plus lazy rescan:** The last committed snapshot appears first. A single rescan starts after the important UI work has finished, or sooner if requested manually. The UI shows last-scan time and scan state. There is no timer-based polling.
-- **Stable ID by observed location:** This preserves identity across ordinary rescans without pretending to solve file moves or duplicates. A changed path is a new track until a later reconciliation feature says otherwise.
-- **Several sources:** Choosing a new folder does not delete existing sources or their track IDs. The UI shows registered folders; removal and overlap resolution wait.
-- **Bounded scanning:** One library-wide scan job at a time, one recursive directory walk feeding a bounded queue (for example, 64 paths), and at most four concurrent metadata/artwork readers across the library. The scanner must drain results as it reads instead of holding an unbounded list of artwork in memory. These limits are initial defaults to measure, not user-facing settings.
-- **Artwork stored once per cover:** Persist a deduplicated binary image keyed by a digest of MIME type and bytes, rather than repeating data URLs in every track row. The renderer requests a cover by ID and converts the validated binary response to an image source; this preserves the current cover UI without sending every cover on each library load.
-- **No event log:** Import and rescan are commands; transaction commit defines durable state. Bounded scan progress and the final committed snapshot can be sent to the renderer, but are not replayable domain events.
-- **No raw application SQL:** Drizzle defines and reads the database. Generated migration files are reviewed and applied only after schema approval.
+The current browser receives embedded covers as data URLs from the in-memory scan. For persistence, prefer reading covers from **present files on demand**, with no image bytes in the initial schema. This makes missing/unreadable covers unavailable. If retaining those covers matters, use a bounded content-addressed app cache with an explicit eviction policy, not an unbounded SQLite blob table. This decision is open and does not block the scanner and source-model work.
 
 ## Risks
 
-- The scanner's current one-shot MessagePack output can still exceed its timeout or 64 MiB buffer. Binary artwork removes base64 overhead at the Rust-to-Electron hop, but bounded concurrency alone does not bound output memory; extending the protocol to incremental frames and staging results is part of this slice.
-- Its current `skipped` count combines unreadable files and traversal errors. The new protocol must distinguish an enumerated unreadable file from a subtree that was never enumerated. An incomplete pass leaves the previous snapshot intact.
-- Synchronous SQLite writes in Electron main can still cause visible pauses when a large staged scan commits. Measure with a representative folder and move database work to a worker only if necessary.
-- A path can be reused for different audio later; path matching alone would retain an old ID. Detecting replacement requires an explicit policy in the contracts layer.
-- The current `coverId` is produced from an in-memory hash. Its collision and cross-version stability need checking before it becomes a durable database key; a content digest at the persistence seam is safer.
-- Adding sources from nested folders may show the same physical file twice. This slice does not merge overlapping sources or infer cross-source identity.
+- The current UI still receives a full in-memory result; the persistence cutover must consume a stream into staged rows instead of accumulating all tracks/covers.
+- Node metadata parsing can read substantial file data, especially embedded covers. Bound concurrency and defer cover bytes where possible.
+- SQLite writes in main can block the UI; measure with a representative folder and use a worker only if needed.
+- A path reused by a different file retains its ID in this first slice; decide replacement identity before attaching irreversible user edits.

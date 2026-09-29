@@ -1,55 +1,13 @@
 # Test Plan: Persistent Referenced Library
 
-Implement one observable vertical slice at a time: a failing test, the smallest working path, then cleanup. Exercise repository/scanner/bridge seams; no module mocks, method spies, or unit tests of framework entrypoint files.
+One vertical red-green-refactor slice at a time. Tests exercise public workflow, scanner, or repository seams, not unit tests of Electron entrypoints or module mocks.
 
-## Slice 1: Saved library survives restart
+1. **Read-only in-process scan:** test nested tagged audio, symlink avoidance, unreadable audio, traversal failure, and unchanged file bytes/mtime. Implement with Effect Stream and bounded `mapEffect`. This slice has begun; current transient renderer still collects results.
+2. **Driver checkpoint:** smoke-test Drizzle with a disposable SQLite file inside Electron. Do not open userData or create a schema until explicit approval.
+3. **Source registration and restart:** with an approved schema, register two folders, reselect one, restart repository, then load the same sources and app track IDs.
+4. **Source-specific scan:** add source B and assert only B is read and reconciled; A's IDs, presence, and last scan time are unchanged. Repeated scan requests for B coalesce.
+5. **Incomplete versus unreadable:** a traversal error or interruption leaves committed rows unchanged; a known unreadable path remains present with old metadata; an absent path becomes missing only after a complete scan of its own source.
+6. **Lazy UI workflow:** show saved metadata before scans start, then queue each existing source independently after paint; manual Rescan targets one source; stop subscriptions on cleanup.
+7. **Artwork, after decision:** for original-file reads, test missing-file fallback and bounded on-demand fetch; for cache choice, test retention, deduplication, size cap and eviction.
 
-- Red: With a temporary SQLite file, register one real folder through the library API, scan one tagged file, close and reopen the repository, then load the same source and stable track ID.
-- Green: Verify a Drizzle-compatible driver in Electron, obtain schema approval, then add schema, migration, repository, and minimal scan path.
-- Refactor: Move row parsing and projection behind the repository without introducing a pass-through service.
-
-## Slice 2: Several roots and duplicate selection
-
-- Red: Register two folders, select one twice, scan, and observe two sources with no duplicate source, with IDs unchanged on a second pass.
-- Green: Canonical-root uniqueness and `(sourceId, relativePath)` upsert.
-- Refactor: Centralize root normalization and path containment parsing.
-
-## Slice 3: Streaming scanner accounts for work
-
-- Red: Run the real scanner on nested folders, a tagged track, and an unreadable audio candidate. Verify version 2 frames, one terminal summary, and counts. Separately simulate traversal failure and verify an incomplete outcome.
-- Green: Bounded queue, four metadata readers, frame writer, and typed traversal/read outcomes.
-- Refactor: Keep scanner library operations separable from CLI framing; prove producer/writer drain before completion.
-
-## Slice 4: Failed pass cannot infer missing tracks
-
-- Red: Load an existing library, stage some seen paths, then inject truncated/oversized frame, child crash, or traversal error through the real scanner adapter seam. After restart, assert committed tracks and presence are unchanged.
-- Green: Disposable stage, full-pass completion checks, atomic reconciliation only after clean completion, startup cleanup.
-- Refactor: One cancellation/failure cleanup path with typed error categories.
-
-## Slice 5: Missing versus unreadable
-
-- Red: Scan two tracks, delete one, make the other's metadata unreadable, complete a pass; the absent one becomes missing, the unreadable one stays present with its prior metadata/cover and ID. A newly unreadable file creates a diagnostic, not a fake track.
-- Green: Separate staged path coverage from successful observations; reconcile by source and relative path.
-- Refactor: Isolate present/missing transition rules from persistence mechanics.
-
-## Slice 6: Library appears before lazy rescan
-
-- Red: In a real Electron window with a saved snapshot, load and paint tracks before scanner progress begins; after readiness, show running state, then committed update. Repeated rescan clicks start only one child process.
-- Green: Renderer Effect load/readiness workflow, main-owned coordinator, fixed IPC events and cleanup.
-- Refactor: Keep Solid components focused on signals/rendering, and scan scheduling in Effect/main.
-
-## Slice 7: Artwork after restart
-
-- Red: Two tracks sharing embedded artwork persist one durable cover, and both display it after restart by on-demand IPC. A missing track retains its cover. Invalid artwork IDs fail at the boundary.
-- Green: Digest-based dedup, binary storage, validated artwork lookup, renderer URL cache and cleanup.
-- Refactor: Keep data URLs/Blob URL creation out of persisted rows and whole-library IPC.
-
-## Coverage and validation
-
-- Protocol: unsupported version, invalid length, oversized frame, malformed MessagePack, unexpected frame order, duplicate completion, missing referenced artwork, and mismatched counts.
-- Persistence: failed commit rollback, abandoned stage cleanup, corrupt stored row classification, duplicate paths, source unavailable, and overlapping roots retaining distinct source-relative identities.
-- Safety: unchanged audio bytes and mtime before/after scan; symlinks not followed; no tag write; no path escape through IPC.
-- Scale: representative multi-folder scan above the current 64 MiB whole-output limit, bounded queue/concurrency, bounded frame memory, and measured main-thread commit pause. The 500-row view cap remains visible and honest.
-- Run Rust tests, `bun run test:electron`, `bun run check:electron`, `bun run check:effect`, `bun run lint`, `bun run format:check`, the Electron build, and a real light/dark UI check.
-
-Tests touching SQLite use temporary files only. Do not create a real `userData` database or apply migrations without schema approval.
+Run `bun run check:electron`, `bun run test:electron`, `bun run check:effect`, `bun run lint`, `bun run format:check`, the Electron build, and a real light/dark UI scan. Scale-test a representative large folder to confirm bounded scanner reads and acceptable main-thread commit latency. Tests use temporary folders and databases only.

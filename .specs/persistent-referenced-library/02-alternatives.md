@@ -1,27 +1,22 @@
 # Alternatives: Persistent Referenced Library
 
-## Option A: One buffered scanner result per folder
+## Scanning
 
-Keep version 1 MessagePack, collect all tracks and artwork in Rust, then write one response and transact it in Electron. Little new code, but the 30-second timeout, 64 MiB stdout cap, and Rust/Electron peak memory scale with library size. A traversal error is currently indistinguishable from an unreadable audio file. This cannot safely infer missing tracks.
+| Option | Shape | Tradeoff |
+| --- | --- | --- |
+| A: Whole-folder snapshots | Collect tracks/covers into arrays, then save | Easy to wire, but peak memory grows with library size and incomplete traversal is dangerous. Suitable only for the current POC UI. |
+| B: Effect Stream per source | Async directory iterator, bounded `mapEffect`, staged per-path writes, commit at source completion | Some staging code, but bounded reads and source-local failures. **Chosen.** |
+| C: PersistedQueue per audio file | Durable jobs, locks, retries and acknowledgments | Useful for independent workers or resumable jobs, but adds durable queue state and makes proof of complete enumeration harder. Not needed now. |
 
-## Option B: Incremental frames plus disk-backed staging
+## Commit boundary
 
-Version 2 of the existing length-prefixed MessagePack protocol emits paths, successful metadata, artwork, traversal failures, and a final completion frame. Main validates each frame and persists bounded batches to staging. Only after every registered source finishes cleanly does a short transaction reconcile staged paths into the committed library. This retains the last snapshot after process failure or restart. It requires protocol and staging work, but no event bus or second database.
+Commit each source separately rather than requiring all sources to finish before any update. Adding a source cannot change another source's missing/present state. Startup may queue all registered sources **one at a time**; each can succeed or fail independently. Manual rescan and add-folder are source-specific. No scan of the entire library is triggered by adding one folder.
 
-## Option C: Scan and commit each source independently
+## Artwork
 
-Use incremental frames and staging, but publish each source as it completes. This gets early updates for large multi-source libraries, yet a failed later source leaves a mixed-generation library and changes the agreed whole-library completion rule. It also makes global scan state and source registration harder to explain.
+| Option | Benefit | Cost |
+| --- | --- | --- |
+| Read from original files on demand | No copied image bytes, simple storage, fresh cover when tags change | Missing/unreadable files have no cover; may require another read. Preferred if this is acceptable. |
+| Bounded app-owned cache | Cover survives missing files and loads quickly | Copies artwork; needs a size limit and eviction rule. Needed if retained covers remain a requirement. |
 
-## Comparison
-
-| Dimension | A: Buffered | B: Atomic full pass | C: Per-source commit |
-| --- | --- | --- | --- |
-| Memory under large scans | Unbounded snapshot | Bounded frame/queue; disk staging | Bounded frame/queue; disk staging |
-| Failure semantics | Ambiguous traversal and reads | Last full snapshot retained | Mixed generations |
-| Caller burden | Simple now, failure-prone later | One scan state and one committed view | Per-source generations |
-| Implementation effort | Low | Moderate | Moderate to high |
-| Fit with agreed completion rule | Poor | Strong | Poor |
-
-## Recommendation
-
-Choose B. Keep the existing protocol family but introduce version 2 frames and a staged full-library commit. Do not attempt to infer missing tracks from version 1 responses. Keep the old scanner and tests working until the version 2 path is verified, then remove the unused one-shot path rather than maintaining two production scanners.
+Do not create an artwork table or cache until this product choice is confirmed. The core source/track identity model does not depend on it.

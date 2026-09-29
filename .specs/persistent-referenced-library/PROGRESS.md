@@ -24,3 +24,5 @@
 - 2026-09-29 - Clarified staged path coverage for unreadable audio; Layer 1 remains awaiting confirmation
 - 2026-09-29 - User approved continuing after the Layer 1 model; confirmed shape and drafted alternatives, contracts, flows, file map, and test plan
 - 2026-09-29 - Opened the complete draft folder in Plannotator for review; schema implementation still requires explicit approval
+- 2026-09-29 - Incorporated review: add-folder scans only its source; replaced Rust/MessagePack plan with Electron Effect Stream; deferred artwork storage and PersistedQueue
+- 2026-09-29 - Began read-only in-process scanner cutover; database schema remains unapproved and uncreated
