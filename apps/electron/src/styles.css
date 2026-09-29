@@ -1,8 +1,8 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   color-scheme: light dark;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
   font-size: 15px;
   --background: #f6f4ee;
   --surface: #fffefa;
@@ -21,7 +21,7 @@
   --color-line: var(--border);
   --color-soft: var(--muted);
   --color-copper: var(--accent);
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
   --font-data: Menlo, monospace;
 }
 
@@ -37,9 +37,33 @@
   }
 }
 
-html, body, #root { width: 100%; height: 100%; }
-body { color: var(--foreground); background: var(--background); }
-button, input { font: inherit; }
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+button,
+input {
+  font: inherit;
+}
 
-.record { display: block; width: 46%; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--muted-foreground); position: relative; }
-.record::after { content: ""; position: absolute; inset: 36%; background: var(--muted-foreground); border-radius: 50%; }
+.record {
+  display: block;
+  width: 46%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid var(--muted-foreground);
+  position: relative;
+}
+.record::after {
+  content: '';
+  position: absolute;
+  inset: 36%;
+  background: var(--muted-foreground);
+  border-radius: 50%;
+}

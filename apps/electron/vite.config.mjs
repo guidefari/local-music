@@ -1,13 +1,13 @@
-import { defineConfig } from "vite"
-import tailwindcss from "@tailwindcss/vite"
-import solid from "vite-plugin-solid"
+import tailwindcss from '@tailwindcss/vite'
+import { defineConfig } from 'vite'
+import solid from 'vite-plugin-solid'
 
 export default defineConfig({
-  root: "src",
-  base: "./",
+  root: 'src',
+  base: './',
   plugins: [solid(), tailwindcss()],
   build: {
-    outDir: "../dist",
+    outDir: '../dist',
     emptyOutDir: false,
   },
 })

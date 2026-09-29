@@ -6,6 +6,18 @@
   "scripts": {
     "dev:electron": "cargo build -p local-music-scanner --bin local-music-scan && bun run --cwd apps/electron dev",
     "check:electron": "bun run --cwd apps/electron check",
-    "test:electron": "cargo build -p local-music-scanner --bin local-music-scan && bun run --cwd apps/electron test"
+    "test:electron": "cargo build -p local-music-scanner --bin local-music-scan && bun run --cwd apps/electron test",
+    "lint": "oxlint apps/electron/src apps/electron/vite.config.mjs",
+    "lint:fix": "oxlint --fix apps/electron/src apps/electron/vite.config.mjs",
+    "format": "oxfmt apps/electron/src apps/electron/vite.config.mjs",
+    "format:check": "oxfmt --check apps/electron/src apps/electron/vite.config.mjs",
+    "check:effect": "effect-language-service diagnostics --project apps/electron/tsconfig.json"
+  },
+  "devDependencies": {
+    "@effect/language-service": "0.87.3",
+    "@oxlint/plugins": "1.86.0",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "oxlint-tailwindcss": "1.14.0"
   }
 }

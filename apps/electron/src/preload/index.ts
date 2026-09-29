@@ -1,11 +1,13 @@
-import { contextBridge, ipcRenderer } from "electron"
-import { Schema } from "effect"
-import { ScanReply } from "../shared/library-contract"
+import { Schema } from 'effect'
+import { contextBridge, ipcRenderer } from 'electron'
 
-contextBridge.exposeInMainWorld("localMusic", {
+import { ScanReply } from '../shared/library-contract'
+
+contextBridge.exposeInMainWorld('localMusic', {
   chooseFolder: async (): Promise<ScanReply> => {
-    const raw: unknown = await ipcRenderer.invoke("library:choose-folder")
+    const raw: unknown = await ipcRenderer.invoke('library:choose-folder')
+
     return Schema.decodeUnknownSync(ScanReply)(raw)
   },
-  isDevelopment: process.env.NODE_ENV !== "production",
+  isDevelopment: process.env.NODE_ENV !== 'production',
 })
