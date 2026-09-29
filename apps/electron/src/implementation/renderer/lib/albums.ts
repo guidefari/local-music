@@ -38,3 +38,11 @@ export function groupAlbums(tracks: ReadonlyArray<LibraryTrack>): ReadonlyArray<
     }
   })
 }
+
+export function albumHue(track: LibraryTrack): number {
+  let hash = 0
+
+  for (const char of albumKey(track)) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) | 0
+
+  return Math.round(Math.abs(hash) * 137.508) % 360
+}

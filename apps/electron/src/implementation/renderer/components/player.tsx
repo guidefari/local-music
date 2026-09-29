@@ -2,12 +2,16 @@ import { Show, createEffect, createSignal } from 'solid-js'
 
 import type { LibraryTrack } from '@/contracts/library'
 import { Cover } from '@/implementation/renderer/components/cover'
+import { QueueStrip } from '@/implementation/renderer/components/queue-strip'
 import { formatTime } from '@/implementation/renderer/lib/time'
 
 /** Plays indexed tracks and renders the persistent transport controls. */
 export function Player(props: {
   track: LibraryTrack | null
   context: string
+  queue: ReadonlyArray<LibraryTrack>
+  queueIndex: number
+  onSelect: (index: number) => void
   hasPrevious: boolean
   hasNext: boolean
   onPrevious: () => void
@@ -87,6 +91,12 @@ export function Player(props: {
       >
         {(track) => (
           <>
+            <QueueStrip
+              tracks={props.queue}
+              index={props.queueIndex}
+              progress={position() / Math.max(duration(), 1)}
+              onSelect={props.onSelect}
+            />
             <div class="now-playing">
               <Cover trackId={track().id} artworkId={track().artworkId} size="small" />
               <span>

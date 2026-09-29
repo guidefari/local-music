@@ -332,6 +332,9 @@ function App() {
         hasPrevious={currentIndex() > 0}
         hasNext={currentIndex() >= 0 && currentIndex() < queue().tracks.length - 1}
         context={queue().label}
+        queue={queue().tracks}
+        queueIndex={currentIndex()}
+        onSelect={playAt}
         onPrevious={() => playAt(currentIndex() - 1)}
         onNext={() => playAt(currentIndex() + 1)}
         onPlayingChange={setPlaying}
