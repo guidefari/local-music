@@ -3,3 +3,4 @@
 /apps/electron/node_modules/
 /apps/electron/dist/
 .DS_Store
+.amp/portals/*

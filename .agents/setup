@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo 'Checking Bun toolchain'
+if ! command -v bun >/dev/null 2>&1 || [[ "$(bun --version)" != '1.4.0' ]]; then
+  npm install --global --force bun@1.4.0
+fi
+
+echo 'Installing locked workspace dependencies'
+bun install --frozen-lockfile
