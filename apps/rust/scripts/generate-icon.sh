@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+cd "$(dirname "$0")/.."
 
 iconset="$(mktemp -d "${TMPDIR:-/tmp}/local-music.XXXXXX.iconset")"
 trap 'rm -rf "$iconset"' EXIT

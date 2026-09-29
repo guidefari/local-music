@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+cd "$(dirname "$0")/../../.."
 
 profile="${1:-debug}"
 if [[ "$profile" != "debug" && "$profile" != "release" ]]; then
@@ -16,7 +17,7 @@ fi
 app="target/$profile/local-music.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "target/$profile/local-music" "$app/Contents/MacOS/local-music"
-cp assets/local-music.icns "$app/Contents/Resources/local-music.icns"
+cp apps/rust/assets/local-music.icns "$app/Contents/Resources/local-music.icns"
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

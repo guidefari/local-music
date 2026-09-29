@@ -1,0 +1,12 @@
+{
+  "name": "local-music",
+  "private": true,
+  "packageManager": "bun@1.4.0",
+  "workspaces": ["apps/electron"],
+  "scripts": {
+    "dev:rust": "cargo run -p local-music",
+    "dev:electron": "bun run --cwd apps/electron dev",
+    "check:electron": "bun run --cwd apps/electron check",
+    "test:electron": "bun run --cwd apps/electron test"
+  }
+}
