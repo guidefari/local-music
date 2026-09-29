@@ -2,13 +2,16 @@ use std::path::PathBuf;
 
 use gpui_kit::component::{
     ActiveTheme, Disableable,
-    button::{Button, ButtonVariants},
+    button::Button,
     input::{Input, InputEvent, InputState},
     scroll::ScrollableElement,
 };
 use gpui_kit::*;
 
-use crate::library::{ScanResult, Track, scan_folder};
+use crate::{
+    appearance,
+    library::{ScanResult, Track, scan_folder},
+};
 
 pub struct Workspace {
     folder: Option<PathBuf>,
@@ -18,10 +21,16 @@ pub struct Workspace {
     status: String,
     scanning: bool,
     _search_subscription: Subscription,
+    _appearance_subscription: Subscription,
 }
 
 impl Workspace {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        appearance::follow_system(window, cx);
+        let _appearance_subscription = cx.observe_window_appearance(window, |_, window, cx| {
+            appearance::follow_system(window, cx);
+            cx.notify();
+        });
         let search = cx.new(|cx| {
             InputState::new(window, cx).placeholder("Search tracks, artists, albums, or paths")
         });
@@ -40,6 +49,7 @@ impl Workspace {
             status: "Choose a music folder to get started.".to_owned(),
             scanning: false,
             _search_subscription,
+            _appearance_subscription,
         }
     }
 
@@ -76,29 +86,58 @@ impl Render for Workspace {
             .filter(|track| track.matches(&self.query))
             .collect();
         let count = filtered.len();
-        let rows = filtered.into_iter().take(500).map(|track| {
-            div()
-                .flex()
-                .items_center()
-                .justify_between()
-                .gap_4()
-                .border_b_1()
-                .border_color(cx.theme().border)
-                .py_2()
-                .child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap_1()
-                        .child(track.title.clone())
-                        .child(format!("{} · {}", track.artist, track.album)),
-                )
-                .child(format!(
-                    "{}:{:02}",
-                    track.duration_seconds / 60,
-                    track.duration_seconds % 60
-                ))
-        });
+        let rows = filtered
+            .into_iter()
+            .take(500)
+            .enumerate()
+            .map(|(index, track)| {
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_4()
+                    .border_b_1()
+                    .border_color(cx.theme().border)
+                    .px_4()
+                    .py_3()
+                    .bg(cx.theme().group_box)
+                    .child(
+                        div()
+                            .w_8()
+                            .font_family("Menlo")
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child(format!("{:02}", index + 1)),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .flex_1()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .child(track.title.clone()),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(cx.theme().muted_foreground)
+                                    .child(format!("{} · {}", track.artist, track.album)),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .font_family("Menlo")
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child(format!(
+                                "{}:{:02}",
+                                track.duration_seconds / 60,
+                                track.duration_seconds % 60
+                            )),
+                    )
+            });
 
         div()
             .flex()
@@ -112,18 +151,35 @@ impl Render for Workspace {
                     .items_center()
                     .justify_between()
                     .gap_4()
-                    .p_5()
+                    .px_6()
+                    .py_4()
                     .border_b_1()
                     .border_color(cx.theme().border)
-                    .child(div().flex().flex_col().gap_1().child("local-music").child(
-                        self.folder.as_ref().map_or_else(
-                            || "Your local music, in one place".to_owned(),
-                            |folder| folder.display().to_string(),
-                        ),
-                    ))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_3()
+                            .child(img("images/app-icon.svg").size_10())
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .child(
+                                        div()
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .child("local-music"),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(cx.theme().muted_foreground)
+                                            .child("Your records, your way"),
+                                    ),
+                            ),
+                    )
                     .child(
                         Button::new("choose-folder")
-                            .primary()
                             .label(if self.folder.is_some() {
                                 "Change folder"
                             } else {
@@ -139,12 +195,58 @@ impl Render for Workspace {
                 div()
                     .flex()
                     .flex_col()
-                    .gap_3()
-                    .p_5()
-                    .child(self.status.clone())
+                    .flex_1()
+                    .min_h_0()
+                    .w_full()
+                    .max_w(rems(80.))
+                    .mx_auto()
+                    .px_6()
+                    .pt_6()
+                    .gap_4()
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_xl()
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .child("Library"),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(cx.theme().muted_foreground)
+                                    .child(self.folder.as_ref().map_or_else(
+                                        || {
+                                            "Choose a folder to start exploring your music"
+                                                .to_owned()
+                                        },
+                                        |folder| folder.display().to_string(),
+                                    )),
+                            ),
+                    )
                     .child(Input::new(&self.search))
-                    .child(format!("{count} matching tracks")),
+                    .child(
+                        div()
+                            .flex()
+                            .justify_between()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child(self.status.clone())
+                            .child(format!("{count} matching tracks")),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_h_0()
+                            .overflow_y_scrollbar()
+                            .rounded_lg()
+                            .border_1()
+                            .border_color(cx.theme().border)
+                            .children(rows),
+                    ),
             )
-            .child(div().flex_1().overflow_y_scrollbar().px_5().children(rows))
     }
 }
