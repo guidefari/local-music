@@ -1,0 +1,71 @@
+:root {
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 15px;
+  --background: #f6f4ee;
+  --surface: #fffefa;
+  --foreground: #242b29;
+  --muted-foreground: #56635e;
+  --border: #d8dcd5;
+  --muted: #efe3d8;
+  --accent: #96502f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #191e1d;
+    --surface: #222a28;
+    --foreground: #f3f0e8;
+    --muted-foreground: #bec7c0;
+    --border: #3e4945;
+    --muted: #3b3630;
+    --accent: #de9a73;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; width: 100%; height: 100%; }
+body { color: var(--foreground); background: var(--background); }
+button, input { font: inherit; }
+button { color: var(--foreground); border: 1px solid var(--border); background: transparent; border-radius: 7px; padding: 7px 12px; cursor: default; }
+button:hover:not(:disabled) { background: var(--muted); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .55; }
+.app-shell { display: flex; flex-direction: column; height: 100%; }
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--border); padding: 16px 24px; flex: none; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand img { width: 40px; height: 40px; border-radius: 9px; }
+.brand div, .track-copy, .album-copy { display: flex; flex-direction: column; min-width: 0; }
+.brand span, .album-copy span, .album-copy small, .track-copy span, .library-heading p, .status, .section-heading span { color: var(--muted-foreground); font-size: 13px; }
+.brand strong { font-size: 15px; }
+.brand span { margin-top: 3px; }
+.library { display: flex; flex-direction: column; gap: 18px; flex: 1; min-height: 0; width: min(100%, 1280px); margin: 0 auto; padding: 24px; }
+.library-heading h1 { margin: 0 0 5px; font-size: 21px; letter-spacing: -.025em; }
+.library-heading p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status { margin: 0; }
+.search-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+input[type="search"] { width: 100%; color: var(--foreground); background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; }
+input::placeholder { color: var(--muted-foreground); }
+.albums { display: flex; flex-direction: column; gap: 12px; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.section-heading h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.album-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.album-card { display: flex; align-items: center; gap: 16px; flex: 1 1 250px; min-width: 240px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.album-copy { gap: 5px; }
+.album-copy strong, .track-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.cover { display: block; flex: none; border-radius: 6px; object-fit: cover; }
+.cover-small { width: 46px; height: 46px; }
+.cover-large { width: 76px; height: 76px; }
+.cover-empty { display: grid; place-items: center; background: var(--muted); }
+.record { display: block; width: 46%; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--muted-foreground); position: relative; }
+.record::after { content: ""; position: absolute; inset: 36%; background: var(--muted-foreground); border-radius: 50%; }
+.tracks { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+.track-list { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); }
+.track-row { display: flex; align-items: center; gap: 14px; min-height: 66px; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+.track-row:last-child { border-bottom: 0; }
+.track-number, .duration { color: var(--muted-foreground); font: 13px Menlo, monospace; font-variant-numeric: tabular-nums; }
+.track-number { width: 28px; flex: none; }
+.track-copy { flex: 1; gap: 5px; }
+.track-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.empty-list { padding: 28px; color: var(--muted-foreground); }
+.fps-meter { position: fixed; bottom: 12px; right: 12px; width: 96px; opacity: .75; pointer-events: none; }
