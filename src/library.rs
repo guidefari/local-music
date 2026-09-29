@@ -1,9 +1,17 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    hash::{Hash, Hasher},
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
+use gpui_kit::{Image, ImageFormat};
 use lofty::{
     file::{AudioFile, TaggedFileExt},
+    picture::PictureType,
     prelude::Accessor,
     read_from_path,
+    tag::Tag,
 };
 use walkdir::WalkDir;
 
@@ -14,6 +22,7 @@ pub struct Track {
     pub artist: String,
     pub album: String,
     pub duration_seconds: u64,
+    pub cover: Option<Arc<Image>>,
 }
 
 impl Track {
@@ -36,6 +45,7 @@ pub struct ScanResult {
 pub fn scan_folder(folder: &Path) -> ScanResult {
     let mut tracks = Vec::new();
     let mut skipped = 0;
+    let mut covers = HashMap::new();
 
     for entry in WalkDir::new(folder).follow_links(false) {
         let entry = match entry {
@@ -72,6 +82,7 @@ pub fn scan_folder(folder: &Path) -> ScanResult {
                         .map(|album| album.into_owned())
                         .unwrap_or_else(|| "Unknown album".to_owned()),
                     duration_seconds: file.properties().duration().as_secs(),
+                    cover: tag.and_then(|tag| cover_image(tag, &mut covers)),
                 });
             }
             Err(_) => skipped += 1,
@@ -89,6 +100,30 @@ pub fn scan_folder(folder: &Path) -> ScanResult {
     ScanResult { tracks, skipped }
 }
 
+fn cover_image(tag: &Tag, cache: &mut HashMap<u64, Arc<Image>>) -> Option<Arc<Image>> {
+    let picture = tag
+        .pictures()
+        .iter()
+        .find(|picture| picture.pic_type() == PictureType::CoverFront)
+        .or_else(|| tag.pictures().first())?;
+    let data = picture.data();
+    if data.len() > 8 * 1024 * 1024 {
+        return None;
+    }
+    let format = ImageFormat::from_mime_type(picture.mime_type()?.as_str())?;
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    data.hash(&mut hasher);
+    let id = hasher.finish();
+    if let Some(image) = cache.get(&id)
+        && image.bytes == data
+    {
+        return Some(image.clone());
+    }
+    let image = Arc::new(Image::from_bytes(format, data.to_vec()));
+    cache.insert(id, image.clone());
+    Some(image)
+}
+
 fn is_audio(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
@@ -103,6 +138,10 @@ fn is_audio(path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lofty::{
+        picture::{MimeType, Picture},
+        tag::TagType,
+    };
 
     #[test]
     fn search_includes_metadata_and_file_path() {
@@ -112,6 +151,7 @@ mod tests {
             artist: "Artist".to_owned(),
             album: "Record".to_owned(),
             duration_seconds: 100,
+            cover: None,
         };
 
         for query in ["example", "ARTIST", "record", "house", " "] {
@@ -125,5 +165,28 @@ mod tests {
         assert!(is_audio(Path::new("track.FLAC")));
         assert!(is_audio(Path::new("track.m4a")));
         assert!(!is_audio(Path::new("cover.jpg")));
+    }
+
+    #[test]
+    fn front_cover_is_shared_between_tracks() {
+        let mut tag = Tag::new(TagType::Id3v2);
+        tag.push_picture(Picture::new_unchecked(
+            PictureType::CoverBack,
+            Some(MimeType::Png),
+            None,
+            vec![1, 2, 3],
+        ));
+        tag.push_picture(Picture::new_unchecked(
+            PictureType::CoverFront,
+            Some(MimeType::Jpeg),
+            None,
+            vec![4, 5, 6],
+        ));
+
+        let mut cache = HashMap::new();
+        let first = cover_image(&tag, &mut cache).expect("front cover is available");
+        let second = cover_image(&tag, &mut cache).expect("front cover is cached");
+        assert_eq!(first.format, ImageFormat::Jpeg);
+        assert!(Arc::ptr_eq(&first, &second));
     }
 }
