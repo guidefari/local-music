@@ -1,15 +1,11 @@
 import { join } from 'node:path'
 
 import { Effect, Layer, Schema } from 'effect'
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron'
 
-import {
-  Library,
-  type ArtworkReply,
-  type LibraryReply,
-  type LibrarySnapshot,
-} from '../../contracts/library'
+import { Library, type LibraryReply, type LibrarySnapshot } from '../../contracts/library'
 import { artworkCacheLayer } from './artwork-cache'
+import { serveArtwork } from './artwork-protocol'
 import { openLibraryDatabase } from './db/open'
 import { libraryStoreLayer } from './db/store'
 import { libraryLayer } from './library'
@@ -38,6 +34,10 @@ function createWindow() {
 
 app.setName('local-music')
 
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'local-music-artwork', privileges: { standard: true, secure: true } },
+])
+
 void app.whenReady().then(async () => {
   if (!app.isPackaged && process.env.LOCAL_MUSIC_TEST_USER_DATA) {
     app.setPath('userData', process.env.LOCAL_MUSIC_TEST_USER_DATA)
@@ -59,6 +59,8 @@ void app.whenReady().then(async () => {
   const library = await Effect.runPromise(
     Library.pipe(Effect.provide(libraryLayer.pipe(Layer.provide(adapters)))),
   )
+
+  protocol.handle('local-music-artwork', (request) => serveArtwork(library, request))
 
   const notifyLibrary = (snapshot: LibrarySnapshot) => {
     for (const window of BrowserWindow.getAllWindows())
@@ -136,17 +138,6 @@ void app.whenReady().then(async () => {
       return await rescan(sourceId)
     } catch {
       return { ok: false, message: 'Invalid music folder.' }
-    }
-  })
-
-  ipcMain.handle('library:artwork', async (_event, raw): Promise<ArtworkReply> => {
-    try {
-      const trackId = Schema.decodeUnknownSync(Schema.NonEmptyString)(raw)
-      const artwork = await Effect.runPromise(library.artwork(trackId))
-
-      return { ok: true, ...artwork }
-    } catch {
-      return { ok: false, message: 'Album artwork is not available.' }
     }
   })
 

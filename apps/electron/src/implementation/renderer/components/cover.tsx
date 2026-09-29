@@ -1,27 +1,23 @@
-import { Show, createResource } from 'solid-js'
+import { Show, createEffect, createSignal, on } from 'solid-js'
 
-export function Cover(props: { trackId: string | null; size: 'small' | 'large' }) {
+export function Cover(props: {
+  trackId: string | null
+  artworkId: string | null
+  size: 'small' | 'large'
+}) {
   const size = () => (props.size === 'small' ? 'size-[46px]' : 'size-[76px]')
+  const [failed, setFailed] = createSignal(false)
 
-  const [artwork] = createResource(
-    () => props.trackId,
-    async (id) => {
-      const reply = await window.localMusic.getTrackArtwork(id)
-
-      if (!reply.ok) return null
-
-      return new Promise<string | null>((resolve) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result instanceof ArrayBuffer ? null : reader.result)
-        reader.onerror = () => resolve(null)
-        reader.readAsDataURL(new Blob([new Uint8Array(reply.bytes)], { type: reply.mimeType }))
-      })
-    },
+  createEffect(
+    on(
+      () => [props.trackId, props.artworkId],
+      () => setFailed(false),
+    ),
   )
 
   return (
     <Show
-      when={artwork()}
+      when={props.trackId && props.artworkId && !failed()}
       fallback={
         <div
           class={`grid shrink-0 place-items-center rounded-md bg-soft ${size()}`}
@@ -31,7 +27,12 @@ export function Cover(props: { trackId: string | null; size: 'small' | 'large' }
         </div>
       }
     >
-      {(url) => <img class={`shrink-0 rounded-md object-cover ${size()}`} src={url()} alt="" />}
+      <img
+        class={`shrink-0 rounded-md object-cover ${size()}`}
+        src={`local-music-artwork://cover/${props.trackId}/${props.artworkId}`}
+        alt=""
+        onError={() => setFailed(true)}
+      />
     </Show>
   )
 }

@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, test } from 'node:test'
 
-import { Effect, Result, Schema, Stream } from 'effect'
+import { Effect, Schema, Stream } from 'effect'
 
-import { ScanResult } from '../../contracts/library'
-import { scanFolder, scanFolderStream } from './scanner'
+import { LibrarySnapshot } from '../../contracts/library'
+import { sourceScanner } from './scanner'
 
 const folders: string[] = []
 
@@ -35,11 +35,17 @@ test('scanner indexes an audio file in place', async () => {
   pcm.copy(wav, 44)
   await writeFile(join(folder, 'Sample.wav'), wav)
 
-  const result = await Effect.runPromise(scanFolder(folder))
-  assert.equal(result.tracks.length, 1)
-  assert.equal(result.tracks[0]?.title, 'Sample')
-  assert.equal(result.tracks[0]?.durationSeconds, 1)
-  assert.equal(result.skipped, 0)
+  const observations = await Effect.runPromise(Stream.runCollect(sourceScanner.scan(folder)))
+  assert.equal(observations.length, 1)
+  assert.equal(observations[0]?.kind, 'observed')
+
+  const first = observations[0]
+
+  if (first?.kind !== 'observed') throw new Error('Expected observed audio')
+
+  assert.equal(first.observation.path, 'Sample.wav')
+  assert.equal(first.observation.title, 'Sample')
+  assert.equal(first.observation.durationSeconds, 1)
 })
 
 test('scanner visits nested folders, counts unreadable audio, and does not follow symlinks', async () => {
@@ -49,14 +55,9 @@ test('scanner visits nested folders, counts unreadable audio, and does not follo
   await writeFile(join(folder, 'nested', 'broken.MP3'), 'not audio')
   await symlink(join(folder, 'nested'), join(folder, 'linked'))
 
-  const result = await Effect.runPromise(scanFolder(folder))
-  assert.equal(result.tracks.length, 0)
-  assert.equal(result.skipped, 1)
-
-  const observations = await Effect.runPromise(Stream.runCollect(scanFolderStream(folder)))
+  const observations = await Effect.runPromise(Stream.runCollect(sourceScanner.scan(folder)))
   assert.equal(observations.length, 1)
-  assert.equal(observations[0]?.path, join(folder, 'nested', 'broken.MP3'))
-  assert.equal(observations[0] && Result.isFailure(observations[0].result), true)
+  assert.deepEqual(observations[0], { kind: 'unreadable', path: join('nested', 'broken.MP3') })
 })
 
 test('scanner fails when the source cannot be traversed', async () => {
@@ -64,11 +65,11 @@ test('scanner fails when the source cannot be traversed', async () => {
   folders.push(folder)
   await rm(folder, { recursive: true })
 
-  await assert.rejects(Effect.runPromise(scanFolder(folder)))
+  await assert.rejects(Effect.runPromise(Stream.runDrain(sourceScanner.scan(folder))))
 })
 
-test('scanner contract rejects malformed track data', () => {
-  const decode = Schema.decodeUnknownResult(ScanResult)
-  const result = decode({ tracks: [{ title: 'Only a title' }], covers: {}, skipped: 0 })
+test('library contract rejects malformed track data', () => {
+  const decode = Schema.decodeUnknownResult(LibrarySnapshot)
+  const result = decode({ sources: [], tracks: [{ title: 'Only a title' }] })
   assert.equal(result._tag, 'Failure')
 })

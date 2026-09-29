@@ -7,7 +7,13 @@ export function Albums(props: { tracks: ReadonlyArray<LibraryTrack> }) {
   const albums = createMemo(() => {
     const found = new Map<
       string,
-      { artist: string; title: string; count: number; coverTrackId: string | null }
+      {
+        artist: string
+        title: string
+        count: number
+        coverTrackId: string | null
+        artworkId: string | null
+      }
     >()
 
     for (const track of props.tracks) {
@@ -16,13 +22,18 @@ export function Albums(props: { tracks: ReadonlyArray<LibraryTrack> }) {
 
       if (album) {
         album.count++
-        album.coverTrackId ??= track.artworkId ? track.id : null
+
+        if (!album.artworkId && track.artworkId) {
+          album.coverTrackId = track.id
+          album.artworkId = track.artworkId
+        }
       } else {
         found.set(key, {
           artist: track.artist,
           title: track.album,
           count: 1,
           coverTrackId: track.artworkId ? track.id : null,
+          artworkId: track.artworkId,
         })
       }
     }
@@ -42,7 +53,7 @@ export function Albums(props: { tracks: ReadonlyArray<LibraryTrack> }) {
         <For each={[...albums().values()].slice(0, 4)}>
           {(album) => (
             <article class="flex min-w-[240px] flex-[1_1_250px] items-center gap-4 rounded-[10px] border border-line bg-panel p-4">
-              <Cover trackId={album.coverTrackId} size="large" />
+              <Cover trackId={album.coverTrackId} artworkId={album.artworkId} size="large" />
               <div class="flex min-w-0 flex-col gap-[5px]">
                 <strong class="truncate font-semibold">{album.title}</strong>
                 <span class="text-[13px] text-subtle">{album.artist}</span>

@@ -8,6 +8,7 @@ import { Effect, Stream } from 'effect'
 
 import { LibraryFailure, SourceScanner, type ScannedPath } from '../../contracts/library'
 import { makeArtworkCache } from './artwork-cache'
+import { serveArtwork } from './artwork-protocol'
 import { openLibraryDatabase } from './db/open'
 import { makeLibraryStore } from './db/store'
 import { makeLibrary } from './library'
@@ -59,6 +60,25 @@ test('retains saved metadata and cached artwork when a later traversal fails or 
 
   assert.ok(id)
   assert.deepEqual((await Effect.runPromise(library.artwork(id))).bytes, cover.bytes)
+
+  const artworkId = first.tracks[0]?.artworkId
+  assert.ok(artworkId)
+
+  const response = await serveArtwork(
+    library,
+    new Request(`local-music-artwork://cover/${id}/${artworkId}`),
+  )
+
+  assert.equal(response.status, 200)
+  assert.equal(response.headers.get('Content-Type'), cover.mimeType)
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()), cover.bytes)
+
+  const rejected = await serveArtwork(
+    library,
+    new Request(`local-music-artwork://cover/${id}/${'0'.repeat(64)}`),
+  )
+
+  assert.equal(rejected.status, 404)
 
   fail = true
   await assert.rejects(Effect.runPromise(library.rescan(first.sources[0]?.id ?? '')))

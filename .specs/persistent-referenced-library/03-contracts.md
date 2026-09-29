@@ -88,7 +88,7 @@ These interfaces mark authority boundaries, not a requirement for pass-through w
 
 The cache stores only validated MIME types and at most 8 MiB per image. Digest includes MIME type and bytes; write to a temporary file and atomically rename to `<digest>` so a crash never exposes half an image. Proposed total cap is 512 MiB. Serialize admission/accounting so four concurrent readers cannot overfill it. Committed track references are pinned, including missing tracks; reclaim only unreferenced files, and do so before starting a scan and after a successful commit. If the cap cannot admit a new cover, stage null artwork fields for that observation and report a cache miss. A missing/unreadable known track keeps its prior cover ID. Track updates that remove a cover make the old file eligible for later pruning. Read paths derive solely from validated digest IDs under userData, never from renderer-supplied paths. A missing/corrupt cache file is a typed fallback, not a reason to delete a track.
 
-## IPC
+## IPC and artwork delivery
 
 ```ts
 type LibraryReply<T> =
@@ -100,14 +100,13 @@ interface LocalMusicBridge {
   loadLibrary(): Promise<LibraryReply<LibrarySnapshot>>
   chooseFolder(): Promise<LibraryReply<LibrarySnapshot>>
   rescan(sourceId: SourceId): Promise<LibraryReply<SourceScanState>>
-  getTrackArtwork(id: TrackId): Promise<LibraryReply<{ readonly mimeType: string; readonly bytes: Uint8Array }>>
   onLibraryChanged(listener: (snapshot: LibrarySnapshot) => void): () => void
   onScanState(listener: (state: SourceScanState) => void): () => void
   readonly isDevelopment: boolean
 }
 ```
 
-Preload and renderer decode replies and events; main parses a track ID and resolves only its saved artwork or validated source path. Renderer cannot supply arbitrary filesystem paths. For a cached cover, main reads the digest file; if uncached and the track is present, it may reread the original file read-only. The renderer requests visible covers on demand and releases object URLs on cleanup. Existing transient `ScanResult`/`chooseFolder` semantics remain in the current POC until the persistent cutover, not alongside a second production path.
+Preload and renderer decode replies and events. Artwork uses the narrow `local-music-artwork://cover/<track-id>/<artwork-digest>` Electron protocol instead of IPC or data/blob URLs. Main validates the URL, resolves the saved track, verifies its cached bytes against the digest, and serves the binary image with its saved MIME type. Renderer cannot supply filesystem paths. Missing or corrupt covers fall back to the placeholder. The protocol is registered before app readiness and allowed only for images by the renderer CSP; it does not bypass CSP. Uncached cover fallback to the original file is not implemented.
 
 ## Driver checkpoint
 

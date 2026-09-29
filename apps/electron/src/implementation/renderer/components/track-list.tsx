@@ -22,7 +22,7 @@ export function TrackList(props: { tracks: ReadonlyArray<LibraryTrack> }) {
             <span class="w-7 shrink-0 font-data text-[13px] text-subtle tabular-nums">
               {String(index() + 1).padStart(2, '0')}
             </span>
-            <Cover trackId={track.artworkId ? track.id : null} size="small" />
+            <Cover trackId={track.id} artworkId={track.artworkId} size="small" />
             <div class="flex min-w-0 flex-1 flex-col gap-[5px]">
               <strong class="truncate font-semibold">
                 {track.title}

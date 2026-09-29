@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { contextBridge, ipcRenderer } from 'electron'
 
-import { ArtworkReply, LibraryReply, LibrarySnapshot } from '../../contracts/library'
+import { LibraryReply, LibrarySnapshot } from '../../contracts/library'
 
 contextBridge.exposeInMainWorld('localMusic', {
   loadLibrary: async (): Promise<LibraryReply> => {
@@ -13,8 +13,6 @@ contextBridge.exposeInMainWorld('localMusic', {
     Schema.decodeUnknownSync(LibraryReply)(await ipcRenderer.invoke('library:choose-folder')),
   rescan: async (sourceId: string): Promise<LibraryReply> =>
     Schema.decodeUnknownSync(LibraryReply)(await ipcRenderer.invoke('library:rescan', sourceId)),
-  getTrackArtwork: async (trackId: string): Promise<ArtworkReply> =>
-    Schema.decodeUnknownSync(ArtworkReply)(await ipcRenderer.invoke('library:artwork', trackId)),
   onLibraryChanged: (listener: (snapshot: LibrarySnapshot) => void) => {
     const receive = (
       _event: Electron.IpcRendererEvent,
