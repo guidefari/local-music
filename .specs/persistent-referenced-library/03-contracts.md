@@ -1,6 +1,6 @@
 # Contracts: Persistent Referenced Library
 
-These are design contracts, not a schema approval or migration. Effect Schema owns parsed IDs, paths, rows, and IPC DTOs; Drizzle owns approved database fields and queries. No cast turns external input or persisted rows into a domain value.
+These are the approved design contracts. The initial Drizzle schema and migration now exist. Effect Schema owns parsed IPC DTOs and library snapshots; Drizzle owns database fields and queries. The implementation and this design record may differ in unimplemented details noted below.
 
 ## Durable records
 
@@ -44,7 +44,7 @@ interface LibrarySnapshot {
 }
 ```
 
-The Drizzle proposal has `library_source(id, root_path UNIQUE, added_at, last_successful_scan_at)`, `track(id, source_id REFERENCES library_source, relative_path, observed_title, observed_artist, observed_album, duration_seconds, has_embedded_artwork, artwork_id?, artwork_mime_type?, presence, last_seen_at, UNIQUE(source_id, relative_path))`, and disposable `scan_stage_path(scan_id, source_id, relative_path, read_state, observed_title?, observed_artist?, observed_album?, duration_seconds?, has_embedded_artwork?, artwork_id?, artwork_mime_type?, PRIMARY KEY(scan_id, source_id, relative_path))`. Database names are snake_case and TypeScript properties camelCase. Artwork ID and MIME must be both null or both non-null; cached artwork implies `hasEmbeddedArtwork`. No SQLite artwork blob table is proposed. Stage `observed` requires metadata fields; stage `unreadable` requires none. Validate at the persistence boundary and, where practical, with DB check constraints. No schema or migration is approved yet.
+The approved Drizzle schema has `library_source(id, root_path UNIQUE, added_at, last_successful_scan_at)`, `track(id, source_id REFERENCES library_source, relative_path, observed_title, observed_artist, observed_album, duration_seconds, has_embedded_artwork, artwork_id?, artwork_mime_type?, presence, last_seen_at, UNIQUE(source_id, relative_path))`, and disposable `scan_stage_path(scan_id, source_id, relative_path, read_state, observed_title?, observed_artist?, observed_album?, duration_seconds?, has_embedded_artwork?, artwork_id?, artwork_mime_type?, PRIMARY KEY(scan_id, source_id, relative_path))`. Database names are snake_case and TypeScript properties camelCase. Artwork ID and MIME must be both null or both non-null; cached artwork implies `hasEmbeddedArtwork`. No SQLite artwork blob table is proposed. Stage `observed` requires metadata fields; stage `unreadable` requires none. Validate at the persistence boundary and, where practical, with DB check constraints.
 
 An absent path becomes missing only after successful enumeration of **that source**. An unreadable known path stays present and keeps its last good metadata. A newly unreadable path creates no track row. A successful observation upserts by source/path and preserves its app ID. Source registration is unique by `realpath` of a selected root. Other sources do not change when this one commits.
 
@@ -111,4 +111,4 @@ Preload and renderer decode replies and events; main parses a track ID and resol
 
 ## Driver checkpoint
 
-Drizzle `0.45.3` has no confirmed direct `node:sqlite` adapter in this project. Choose and test an Electron-compatible SQLite driver against a temporary database before authoring any schema or userData migration. A Bun-only driver cannot be assumed to run in Electron. Obtain explicit approval for proposed fields and constraints first.
+The approved Drizzle `0.45.3` schema uses `@libsql/client` with a local file URL. Its migration and query were tested in Electron against a temporary database before wiring app data. The npm default release of `@effect/sql-sqlite-node` targets Effect v3, while its `4.0.0-rc.118` release matches this app; it uses native `better-sqlite3` and is not a Drizzle adapter. Drizzle's `effect-schema` guide generates validators from tables but the pinned Drizzle version does not export that integration. Effect owns scanner and library workflows, while Drizzle/libSQL owns storage. A later driver or Drizzle upgrade is a separate decision.

@@ -27,3 +27,4 @@
 - 2026-09-29 - Incorporated review: add-folder scans only its source; replaced Rust/MessagePack plan with Electron Effect Stream; deferred artwork storage and PersistedQueue
 - 2026-09-29 - Began read-only in-process scanner cutover; database schema remains unapproved and uncreated
 - 2026-09-29 - User chose a bounded app-owned artwork copy; specified content-addressed userData cache and pinned-reference admission policy
+- 2026-09-29 - User approved the proposed schema and requested Executor v2-style contracts and implementation boundaries. Verified Drizzle/libSQL inside Electron; generated the initial migration and implemented per-source staging, retained artwork, and a persistent renderer cutover. Effect SQL SQLite Node v4 was considered but not added because Drizzle remains the storage API.

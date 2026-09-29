@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { opendir } from 'node:fs/promises'
 import { extname, join, parse, relative } from 'node:path'
 
-import { Effect, Result, Schema, Stream } from 'effect'
+import { Effect, Layer, Result, Schema, Stream } from 'effect'
 import { parseFile, selectCover } from 'music-metadata'
 
 import { LibraryFailure, SourceScanner, type ScanResult, type Track } from '../../contracts/library'
@@ -166,3 +166,5 @@ export const sourceScanner = SourceScanner.of({
       ),
     ),
 })
+
+export const sourceScannerLayer = Layer.succeed(SourceScanner, sourceScanner)

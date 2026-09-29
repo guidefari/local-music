@@ -14,6 +14,7 @@ export async function openLibraryDatabase(path: string, migrationsFolder: string
 
   try {
     await migrate(db, { migrationsFolder })
+    await db.delete(schema.scanStagePaths).run()
 
     return { db, close: () => client.close() }
   } catch (error) {

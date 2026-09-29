@@ -1,17 +1,38 @@
-import { Show } from 'solid-js'
+import { Show, createEffect, createResource, createSignal, onCleanup } from 'solid-js'
 
-import type { ScanResult } from '../../../contracts/library'
-
-export function Cover(props: {
-  id: string | null
-  covers: ScanResult['covers']
-  size: 'small' | 'large'
-}) {
+export function Cover(props: { trackId: string | null; size: 'small' | 'large' }) {
   const size = () => (props.size === 'small' ? 'size-[46px]' : 'size-[76px]')
+
+  const [artwork] = createResource(
+    () => props.trackId,
+    async (id) => {
+      const reply = await window.localMusic.getTrackArtwork(id)
+
+      if (!reply.ok) return null
+
+      return { mimeType: reply.mimeType, bytes: reply.bytes }
+    },
+  )
+
+  const [source, setSource] = createSignal<string | null>(null)
+
+  createEffect(() => {
+    const image = artwork()
+
+    const next = image
+      ? URL.createObjectURL(new Blob([new Uint8Array(image.bytes)], { type: image.mimeType }))
+      : null
+
+    setSource(next)
+
+    onCleanup(() => {
+      if (next) URL.revokeObjectURL(next)
+    })
+  })
 
   return (
     <Show
-      when={props.id ? props.covers[props.id] : undefined}
+      when={source()}
       fallback={
         <div
           class={`grid shrink-0 place-items-center rounded-md bg-soft ${size()}`}
@@ -21,9 +42,7 @@ export function Cover(props: {
         </div>
       }
     >
-      {(source) => (
-        <img class={`shrink-0 rounded-md object-cover ${size()}`} src={source()} alt="" />
-      )}
+      {(url) => <img class={`shrink-0 rounded-md object-cover ${size()}`} src={url()} alt="" />}
     </Show>
   )
 }

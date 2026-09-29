@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { Effect, Semaphore } from 'effect'
+import { Effect, Layer, Semaphore } from 'effect'
 
 import { ArtworkCache, LibraryFailure } from '../../contracts/library'
 
@@ -104,3 +104,6 @@ export const makeArtworkCache = Effect.fn('ArtworkCache.make')(function* (direct
 
   return ArtworkCache.of({ store, read, prune })
 })
+
+export const artworkCacheLayer = (directory: string) =>
+  Layer.effect(ArtworkCache, makeArtworkCache(directory))

@@ -1,9 +1,9 @@
 import { For, Show } from 'solid-js'
 
-import type { ScanResult, Track } from '../../../contracts/library'
+import type { LibraryTrack } from '../../../contracts/library'
 import { Cover } from './cover'
 
-export function TrackList(props: { tracks: ReadonlyArray<Track>; covers: ScanResult['covers'] }) {
+export function TrackList(props: { tracks: ReadonlyArray<LibraryTrack> }) {
   return (
     <div
       class="min-h-0 flex-1 overflow-auto rounded-[9px] border border-line bg-panel"
@@ -22,9 +22,12 @@ export function TrackList(props: { tracks: ReadonlyArray<Track>; covers: ScanRes
             <span class="w-7 shrink-0 font-data text-[13px] text-subtle tabular-nums">
               {String(index() + 1).padStart(2, '0')}
             </span>
-            <Cover id={track.coverId} covers={props.covers} size="small" />
+            <Cover trackId={track.artworkId ? track.id : null} size="small" />
             <div class="flex min-w-0 flex-1 flex-col gap-[5px]">
-              <strong class="truncate font-semibold">{track.title}</strong>
+              <strong class="truncate font-semibold">
+                {track.title}
+                {track.presence === 'missing' ? ' · Missing' : ''}
+              </strong>
               <span class="truncate text-[13px] text-subtle">
                 {track.artist} · {track.album}
               </span>

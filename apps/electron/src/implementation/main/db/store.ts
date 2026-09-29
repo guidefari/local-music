@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 
 import { and, eq, notInArray } from 'drizzle-orm'
-import { Effect, Schema } from 'effect'
+import { Effect, Layer, Schema } from 'effect'
 
 import {
   LibraryFailure,
@@ -264,3 +264,6 @@ export function makeLibraryStore(db: LibraryDatabase) {
     findTrack,
   })
 }
+
+export const libraryStoreLayer = (db: LibraryDatabase) =>
+  Layer.succeed(LibraryStore, makeLibraryStore(db))

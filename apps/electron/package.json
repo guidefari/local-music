@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "main": "dist/main.js",
   "scripts": {
-    "build": "bun build src/implementation/main/index.ts --target=node --format=cjs --external electron --outfile dist/main.js && bun build src/implementation/preload/index.ts --target=node --format=cjs --external electron --outfile dist/preload.js && vite build && cp assets/app-icon.svg dist/app-icon.svg",
+    "build": "bun build src/implementation/main/index.ts --target=node --format=cjs --external electron --external @libsql/client --outfile dist/main.js && bun build src/implementation/preload/index.ts --target=node --format=cjs --external electron --outfile dist/preload.js && vite build && cp assets/app-icon.svg dist/app-icon.svg && mkdir -p dist/drizzle && cp -R drizzle/. dist/drizzle/",
     "dev": "bun run build && electron .",
     "check": "tsc --noEmit",
     "test": "bun test"

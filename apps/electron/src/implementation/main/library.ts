@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { realpath } from 'node:fs/promises'
 
-import { Effect, Semaphore, Stream } from 'effect'
+import { Effect, Layer, Semaphore, Stream } from 'effect'
 
 import {
   ArtworkCache,
@@ -79,8 +79,22 @@ export const makeLibrary = Effect.fn('Library.make')(function* (
 
     const bytes = yield* cache.read(track.artworkId)
 
+    if (
+      createHash('sha256').update(track.artworkMimeType).update(bytes).digest('hex') !==
+      track.artworkId
+    ) {
+      return yield* new LibraryFailure({ message: 'Album artwork is not available.' })
+    }
+
     return { mimeType: track.artworkMimeType, bytes }
   })
 
   return Library.of({ load, addFolder, rescan, artwork })
 })
+
+export const libraryLayer = Layer.effect(
+  Library,
+  Effect.gen(function* () {
+    return yield* makeLibrary(yield* LibraryStore, yield* SourceScanner, yield* ArtworkCache)
+  }),
+)
