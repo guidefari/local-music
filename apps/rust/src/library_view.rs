@@ -4,7 +4,7 @@ use gpui_kit::component::ActiveTheme;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use crate::library::Track;
+use local_music::library::Track;
 
 fn cover(image: Option<&Arc<Image>>, size: Rems, cx: &App) -> AnyElement {
     let placeholder = || {

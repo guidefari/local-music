@@ -9,11 +9,8 @@ use gpui_kit::component::{
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use crate::{
-    appearance,
-    library::{ScanResult, Track, scan_folder},
-    library_view,
-};
+use crate::{appearance, library_view};
+use local_music::library::{ScanResult, Track, scan_folder};
 
 pub struct Workspace {
     folder: Option<PathBuf>,

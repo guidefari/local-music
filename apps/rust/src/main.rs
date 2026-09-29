@@ -1,6 +1,5 @@
 mod appearance;
 mod assets;
-mod library;
 mod library_view;
 mod workspace;
 
