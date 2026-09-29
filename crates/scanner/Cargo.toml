@@ -8,7 +8,8 @@ name = "local-music-scan"
 path = "src/main.rs"
 
 [dependencies]
-base64 = "0.22"
 lofty = "0.22"
-serde_json = "1"
+rmp-serde = "1"
+serde = { version = "1", features = ["derive"] }
+serde_bytes = "0.11"
 walkdir = "2"
